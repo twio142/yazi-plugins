@@ -102,15 +102,47 @@ M.fif = function(cwd)
   local ln
   while true do
     local line, event = child:read_line()
+    line = line:gsub("^%s*(.-)%s*$", "%1")
     if event ~= 0 then break end
-    local file, l = line:match("^([^:]+):(%d+):")
+    local file = line:match("^[^:]+")
+    local l = line:match(":(%d+)$")
     ln = l
     table.insert(files, file)
   end
   if #files == 0 then return end
   local cmd = "nvim "
   if #files == 1 then
-    cmd = cmd .. '"' .. files[1] .. '" +' .. ln
+    cmd = cmd .. '"' .. files[1] .. '" ' .. (ln and "+" .. ln or "")
+  else
+    for _, file in ipairs(files) do
+      cmd = cmd .. '"' .. file .. '" '
+    end
+  end
+  ya.manager_emit("shell", { cmd, confirm = true, block = true })
+end
+
+M.obsearch = function(cwd)
+  ya.hide()
+  local child = Command("obsearch")
+    :args({"-o"})
+    :cwd(cwd)
+    :stdout(Command.PIPED)
+    :spawn()
+  local files = {}
+  local ln
+  while true do
+    local line, event = child:read_line()
+    line = line:gsub("^%s*(.-)%s*$", "%1")
+    if event ~= 0 then break end
+    local file = line:match("^[^:]+")
+    local l = line:match(":(%d+)$")
+    ln = l
+    table.insert(files, file)
+  end
+  if #files == 0 then return end
+  local cmd = "nvim "
+  if #files == 1 then
+    cmd = cmd .. '"' .. files[1] .. '" ' .. (ln and "+" .. ln or "")
   else
     for _, file in ipairs(files) do
       cmd = cmd .. '"' .. file .. '" '
