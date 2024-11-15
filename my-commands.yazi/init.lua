@@ -102,7 +102,7 @@ local state = ya.sync(function()
   for idx, url in pairs(cx.active.selected) do
     selected[idx] = tostring(url)
   end
-  for idx, url in pairs(cx.active.yanked) do
+  for idx, url in pairs(cx.yanked) do
     yanked[idx] = tostring(url)
   end
   return {
@@ -124,8 +124,7 @@ return {
     if not func then
       return
     end
-    local s = state()
     table.remove(args, 1)
-    func(s, table.unpack(args))
+    func(state(), table.unpack(args))
   end
 }
