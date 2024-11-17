@@ -63,34 +63,6 @@ M.fd = function(cwd)
   end
 end
 
-M.mru = function()
-  ya.hide()
-  local output = Command("cat")
-    :args({os.getenv("XDG_CACHE_HOME") .. "/neomru/file"})
-    :stdout(Command.PIPED)
-    :output()
-  local files = {}
-  for line in output.stdout:gmatch("[^\n]+") do
-    if #files < 30 and line:find("^/") then
-      table.insert(files, line)
-    end
-  end
-  if #files == 0 then
-    return
-  end
-  local child = Command("fzf")
-    :args({"--preview", "bat --color=always {}"})
-    :stdin(Command.PIPED)
-    :stdout(Command.PIPED)
-    :spawn()
-  child:write_all(table.concat(files, "\n"))
-  child:flush()
-  local selected = child:wait_with_output().stdout:gsub("\n", "")
-  if selected ~= "" then
-    ya.manager_emit("reveal", { selected })
-  end
-end
-
 M.fif = function(cwd)
   ya.hide()
   local child = Command("fif")
@@ -148,6 +120,34 @@ M.git = function(cwd)
   end
 end
 
+M.obsearch = function(cwd)
+  ya.hide()
+  local child = Command("obsearch")
+    :args({"-o"})
+    :cwd(cwd)
+    :stdout(Command.PIPED)
+    :spawn()
+  local files = {}
+  local ln
+  while true do
+    local line, event = child:read_line()
+    if event ~= 0 then break end
+    local file, l = line:match("^([^:]+):(%d+):")
+    ln = l
+    table.insert(files, file)
+  end
+  if #files == 0 then return end
+  local cmd = "nvim "
+  if #files == 1 then
+    cmd = cmd .. '"' .. files[1] .. '" +' .. ln
+  else
+    for _, file in ipairs(files) do
+      cmd = cmd .. '"' .. file .. '" '
+    end
+  end
+  ya.manager_emit("shell", { cmd, confirm = true, block = true })
+end
+
 local state = ya.sync(function() return tostring(cx.active.current.cwd) end)
 
 return {
@@ -156,3 +156,4 @@ return {
     M[args[1]](cwd)
   end
 }
+
