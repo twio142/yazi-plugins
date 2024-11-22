@@ -36,9 +36,11 @@ S.on_selection = function(mode)
   if mode == "copy" then
     ya.manager_emit("yank", {})
     ya.manager_emit("paste", {})
+    ya.manager_emit("unyank", {})
   elseif mode == "move" then
     ya.manager_emit("yank", {cut = true})
     ya.manager_emit("paste", {})
+    ya.manager_emit("unyank", {})
   elseif mode == "symlink" then
     ya.manager_emit("link", {})
   elseif mode == "hardlink" then
