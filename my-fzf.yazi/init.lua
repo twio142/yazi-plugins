@@ -8,7 +8,7 @@ local M = {}
 
 M.z = function(cwd)
   ya.hide()
-  local _z = ":reload:zoxide query {q} -l --exclude '${PWD}' | awk '{ if (!seen[tolower()]++) print }' || true"
+  local _z = ":reload:zoxide query {q} -l --exclude $PWD | awk '{ if (!seen[tolower()]++) print }' || true"
   local output = Command("fzf")
     :args({"--bind", "start".._z})
     :args({"--bind", "change".._z})
@@ -76,17 +76,17 @@ M.fif = function(cwd)
   while true do
     local line, event = child:read_line()
     if event ~= 0 then break end
-    local file, l = line:match("^([^:]+):(%d+):")
-    ln = l
+    local file = line:match("^[^:\n]+")
+    ln = line:match("^[^:]+:(%d+)")
     table.insert(files, file)
   end
   if #files == 0 then return end
   local cmd = "nvim "
   if #files == 1 then
-    cmd = cmd .. '"' .. files[1] .. '" +' .. ln
+    cmd = cmd .. ya.quote(files[1]) .. ' +' .. ln
   else
     for _, file in ipairs(files) do
-      cmd = cmd .. '"' .. file .. '" '
+      cmd = cmd .. ya.quote(file) .. ' '
     end
   end
   ya.manager_emit("shell", { cmd, confirm = true, block = true })
@@ -133,17 +133,17 @@ M.obsearch = function(cwd)
   while true do
     local line, event = child:read_line()
     if event ~= 0 then break end
-    local file, l = line:match("^([^:]+):(%d+):")
-    ln = l
+    local file = line:match("^[^:\n]+")
+    ln = line:match("^[^:]+:(%d+)")
     table.insert(files, file)
   end
   if #files == 0 then return end
   local cmd = "nvim "
-  if #files == 1 then
-    cmd = cmd .. '"' .. files[1] .. '" +' .. ln
+  if #files == 1 and ln then
+    cmd = cmd .. ya.quote(files[1]) .. ' +' .. ln
   else
     for _, file in ipairs(files) do
-      cmd = cmd .. '"' .. file .. '" '
+      cmd = cmd .. ya.quote(file) .. ' '
     end
   end
   ya.manager_emit("shell", { cmd, confirm = true, block = true })
