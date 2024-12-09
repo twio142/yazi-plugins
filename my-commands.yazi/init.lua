@@ -1,35 +1,11 @@
+--- @sync entry
 _G.ya = _G.ya or {}
 _G.cx = _G.cx or {}
 _G.Command = _G.Command or {}
 
-local S = {}
-local A = {}
+local M = {}
 
-A.alfred = function(state, mode)
-  local cmd = "alfred"
-  local args = {state.hovered}
-  if mode ~= nil then
-    cmd = "altr"
-    local wf = mode == "buffer" and "com.nyako520.syspre" or "com.nyako520.alfred"
-    args = {"-w", wf, "-t", mode, "-a", "-"}
-    if #state.selected == 0 then
-      table.insert(args, state.hovered)
-    else
-      for _, url in pairs(state.selected) do
-        table.insert(args, url)
-      end
-    end
-  end
-  Command(cmd)
-    :env("PATH", os.getenv("HOME") .. "/.local/bin:" .. os.getenv("PATH"))
-    :args(args)
-    :output()
-  if #state.selected > 0 then
-    ya.manager_emit("escape", {})
-  end
-end
-
-S.on_selection = function(mode)
+M.on_selection = function(mode)
   if #cx.active.selected == 0 then
     return
   end
@@ -55,7 +31,7 @@ S.on_selection = function(mode)
   ya.manager_emit("escape", {})
 end
 
-S.smart = function(arg)
+M.smart = function(arg)
   if arg == "enter" then
     local h = cx.active.current.hovered
     if h and h.cha.is_dir then
@@ -96,37 +72,13 @@ S.smart = function(arg)
   end
 end
 
-local state = ya.sync(function()
-  local cwd = tostring(cx.active.current.cwd)
-  local hovered = tostring(cx.active.current.hovered.url)
-  local selected = {}
-  local yanked = {}
-  for idx, url in pairs(cx.active.selected) do
-    selected[idx] = tostring(url)
-  end
-  for idx, url in pairs(cx.yanked) do
-    yanked[idx] = tostring(url)
-  end
-  return {
-    cwd = cwd,
-    hovered = hovered,
-    selected = selected,
-    yanked = yanked
-  }
-end)
-
 return {
-  entry = function(_, args)
-    local func = S[args[1]]
+  entry = function(_, job)
+    local args = job.args
+    local func = M[args[1]]
     if func ~= nil then
       table.remove(args, 1)
       return func(table.unpack(args))
     end
-    func = A[args[1]]
-    if not func then
-      return
-    end
-    table.remove(args, 1)
-    func(state(), table.unpack(args))
   end
 }
