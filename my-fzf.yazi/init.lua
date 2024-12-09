@@ -152,9 +152,9 @@ end
 local state = ya.sync(function() return tostring(cx.active.current.cwd) end)
 
 return {
-  entry = function(_, args)
+  entry = function(_, job)
     local cwd = state()
-    M[args[1]](cwd)
+    M[job.args[1]](cwd)
   end
 }
 
