@@ -24,7 +24,12 @@ M.on_selection = function(mode)
   elseif mode == "delete" then
     ya.manager_emit("remove", {})
   elseif mode == "edit" then
-    ya.manager_emit("open", {})
+    if os.getenv("TMUX_POPUP") then
+      local cmd = os.getenv("XDG_CONFIG_HOME") .. "/tmux/scripts/open_in_vim.sh '' \"$@\"; tmux popup -C"
+      ya.manager_emit("shell", { cmd })
+    else
+      ya.manager_emit("open", {})
+    end
   elseif mode == "rename" then
     ya.manager_emit("rename", {})
   end
@@ -50,6 +55,17 @@ M.smart = function(arg)
         ya.manager_emit("open", { hovered = true })
       end
     end
+  elseif arg == "alt-enter" then
+    if not os.getenv("TMUX") then return end
+    local h = cx.active.current.hovered
+    if not h then return end
+    local script = h.cha.is_dir and "find_empty_shell" or "open_in_vim"
+    local cmd = string.format("%s/tmux/scripts/%s.sh '' -n ", os.getenv("XDG_CONFIG_HOME"), script)
+    if h.cha.is_dir then
+      cmd = cmd .. "cd "
+    end
+    cmd = cmd .. ya.quote(tostring(h.url)) .. "; tmux popup -C"
+    ya.manager_emit("shell", { cmd })
   elseif arg == "esc" then
     if #cx.yanked > 0 then
       ya.manager_emit("unyank", {})
