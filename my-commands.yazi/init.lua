@@ -69,6 +69,9 @@ M.smart = function(arg)
       end
     end
     ya.manager_emit("create", {})
+  elseif arg == "tab" then
+    local h = cx.active.current.hovered
+    ya.manager_emit("tab_create", h and h.cha.is_dir and { h.url } or { current = true })
   end
 end
 
