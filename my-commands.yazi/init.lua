@@ -34,10 +34,21 @@ end
 M.smart = function(arg)
   if arg == "enter" then
     local h = cx.active.current.hovered
-    if h and h.cha.is_dir then
-      ya.manager_emit("shell", { "cd '"..tostring(h.url).."'; $SHELL -l", confirm = true, block = true })
+    if not h then return end
+    if os.getenv("TMUX_POPUP") then
+      local script = h.cha.is_dir and "find_empty_shell" or "open_in_vim"
+      local cmd = string.format("%s/tmux/scripts/%s.sh '' ", os.getenv("XDG_CONFIG_HOME"), script)
+      if h.cha.is_dir then
+        cmd = cmd .. "cd "
+      end
+      cmd = cmd .. ya.quote(tostring(h.url)) .. "; tmux popup -C"
+      ya.manager_emit("shell", { cmd })
     else
-      ya.manager_emit("open", { hovered = true })
+      if h.cha.is_dir then
+        ya.manager_emit("shell", { "cd '"..tostring(h.url).."'; $SHELL -l", block = true })
+      else
+        ya.manager_emit("open", { hovered = true })
+      end
     end
   elseif arg == "esc" then
     if #cx.yanked > 0 then

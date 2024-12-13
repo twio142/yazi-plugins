@@ -81,15 +81,23 @@ M.fif = function(cwd)
     table.insert(files, file)
   end
   if #files == 0 then return end
-  local cmd = "nvim "
+  local args = ""
   if #files == 1 then
-    cmd = cmd .. ya.quote(files[1]) .. ' +' .. ln
+    args = args .. ya.quote(files[1])
+    if ln then
+      args = args .. ' +' .. ln
+    end
   else
     for _, file in ipairs(files) do
-      cmd = cmd .. ya.quote(file) .. ' '
+      args = args .. ya.quote(file) .. ' '
     end
   end
-  ya.manager_emit("shell", { cmd, confirm = true, block = true })
+  if os.getenv("TMUX_POPUP") then
+    local script = os.getenv("XDG_CONFIG_HOME") .. "/tmux/scripts/open_in_vim.sh"
+    ya.manager_emit("shell", { script.." '' "..args.."; tmux popup -C" })
+  else
+    ya.manager_emit("shell", { "nvim "..args, block = true })
+  end
 end
 
 M.git = function(cwd)
@@ -138,15 +146,23 @@ M.obsearch = function(cwd)
     table.insert(files, file)
   end
   if #files == 0 then return end
-  local cmd = "nvim "
-  if #files == 1 and ln then
-    cmd = cmd .. ya.quote(files[1]) .. ' +' .. ln
+  local args = ""
+  if #files == 1 then
+    args = args .. ya.quote(files[1])
+    if ln then
+      args = args .. ' +' .. ln
+    end
   else
     for _, file in ipairs(files) do
-      cmd = cmd .. ya.quote(file) .. ' '
+      args = args .. ya.quote(file) .. ' '
     end
   end
-  ya.manager_emit("shell", { cmd, confirm = true, block = true })
+  if os.getenv("TMUX_POPUP") then
+    local script = os.getenv("XDG_CONFIG_HOME") .. "/tmux/scripts/open_in_vim.sh"
+    ya.manager_emit("shell", { script.." '' "..args.."; tmux popup -C" })
+  else
+    ya.manager_emit("shell", { "nvim "..args, block = true })
+  end
 end
 
 local state = ya.sync(function() return tostring(cx.active.current.cwd) end)
