@@ -18,9 +18,13 @@ M.on_selection = function(mode)
     ya.manager_emit("paste", {})
     ya.manager_emit("unyank", {})
   elseif mode == "symlink" then
+    ya.manager_emit("yank", {})
     ya.manager_emit("link", {})
+    ya.manager_emit("unyank", {})
   elseif mode == "hardlink" then
+    ya.manager_emit("yank", {})
     ya.manager_emit("hardlink", {follow = true})
+    ya.manager_emit("unyank", {})
   elseif mode == "delete" then
     ya.manager_emit("remove", {})
   elseif mode == "edit" then
