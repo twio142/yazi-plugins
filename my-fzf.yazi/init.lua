@@ -8,7 +8,7 @@ local M = {}
 
 M.z = function(cwd)
   ya.hide()
-  local _z = ":reload:zoxide query {q} -l --exclude $PWD | awk '{ if (!seen[tolower()]++) print }' || true"
+  local _z = ":reload:zoxide query {q} -l --exclude $PWD || true"
   local output = Command("fzf")
     :args({"--bind", "start".._z})
     :args({"--bind", "change".._z})
