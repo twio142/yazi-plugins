@@ -9,22 +9,48 @@ M.on_selection = function(mode)
   if #cx.active.selected == 0 then
     return
   end
+  local h = cx.active.current.hovered
+  local is_dir = h and h.cha.is_dir
   if mode == "copy" then
+    if is_dir then
+      ya.manager_emit("enter", {})
+    end
     ya.manager_emit("yank", {})
     ya.manager_emit("paste", {})
     ya.manager_emit("unyank", {})
+    if is_dir then
+      ya.manager_emit("leave", {})
+    end
   elseif mode == "move" then
+    if is_dir then
+      ya.manager_emit("enter", {})
+    end
     ya.manager_emit("yank", {cut = true})
     ya.manager_emit("paste", {})
     ya.manager_emit("unyank", {})
+    if is_dir then
+      ya.manager_emit("leave", {})
+    end
   elseif mode == "symlink" then
+    if is_dir then
+      ya.manager_emit("enter", {})
+    end
     ya.manager_emit("yank", {})
     ya.manager_emit("link", {})
     ya.manager_emit("unyank", {})
+    if is_dir then
+      ya.manager_emit("leave", {})
+    end
   elseif mode == "hardlink" then
+    if is_dir then
+      ya.manager_emit("enter", {})
+    end
     ya.manager_emit("yank", {})
     ya.manager_emit("hardlink", {follow = true})
     ya.manager_emit("unyank", {})
+    if is_dir then
+      ya.manager_emit("leave", {})
+    end
   elseif mode == "delete" then
     ya.manager_emit("remove", {})
   elseif mode == "edit" then
