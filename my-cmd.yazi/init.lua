@@ -117,6 +117,20 @@ M.smart = function(arg)
     else
       ya.manager_emit("arrow", { 1 })
     end
+  elseif arg == "parent-up" then
+    local parent = cx.active.parent
+    if not parent then return end
+    local target = parent.files[parent.cursor]
+    if target and target.cha.is_dir then
+      ya.manager_emit("cd", { target.url })
+    end
+  elseif arg == "parent-down" then
+    local parent = cx.active.parent
+    if not parent then return end
+    local target = parent.files[parent.cursor + 2]
+    if target and target.cha.is_dir then
+      ya.manager_emit("cd", { target.url })
+    end
   elseif arg == "new" then
     local files = cx.active.current.files
     for i = 1, #files do
