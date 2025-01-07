@@ -45,7 +45,7 @@ M.fd = function(cwd)
     return table.concat(header, " / ")
   end
   local _fd = function(k, t)
-    return string.format("%s:reload(fd --type %s -H -L --exclude .DS_Store --exclude .git --strip-cwd-prefix=always .)+change-header( %s )", k, t, _hd(t))
+    return string.format("%s:reload(fd -t%s -HL --strip-cwd-prefix=always .)+change-header( %s )", k, t, _hd(t))
   end
   local output = Command("fzf")
     :args({"--preview", "fzf-preview {}", "--preview-window=up,60%"})
