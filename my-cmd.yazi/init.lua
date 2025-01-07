@@ -71,10 +71,25 @@ M.smart = function(arg)
     local h = cx.active.current.hovered
     if not h then return end
     if os.getenv("TMUX_POPUP") then
-      local script = h.cha.is_dir and "find_empty_shell" or "open_in_vim"
-      local cmd = string.format("%s/tmux/scripts/%s.sh '' ", os.getenv("XDG_CONFIG_HOME"), script)
+      local cmd = ""
       if h.cha.is_dir then
-        cmd = cmd .. "cd "
+        local script = "find_empty_shell"
+        cmd = string.format("%s/tmux/scripts/%s.sh '' cd ", os.getenv("XDG_CONFIG_HOME"), script)
+      else
+        local files = cx.active.current.files
+        for i = 1, #files do
+          if files[i]:is_hovered() then
+            local mime = files[i]:mime()
+            if mime:find("^text/") then
+              local script = "open_in_vim"
+              cmd = string.format("%s/tmux/scripts/%s.sh '' ", os.getenv("XDG_CONFIG_HOME"), script)
+              break
+            else
+              ya.manager_emit("open", { hovered = true })
+              return
+            end
+          end
+        end
       end
       cmd = cmd .. ya.quote(tostring(h.url)) .. "; tmux popup -C"
       ya.manager_emit("shell", { cmd })
