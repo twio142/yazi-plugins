@@ -9,17 +9,28 @@ local M = {}
 M.z = function(cwd)
   ya.hide()
   local _z = ":reload:zoxide query {q} -l --exclude $PWD || true"
-  local output = Command("fzf")
+  local child = Command("fzf")
     :args({"--bind", "start".._z})
     :args({"--bind", "change".._z})
+    :args({"--bind", "ctrl-t:print(tab)+accept"})
+    :args({"--header", "\x1b[1;36m⌃T\x1b[0m Open in a new tab"})
     :args({"--disabled", "--preview-window=up,60%"})
     :args({"--preview", "fzf-preview {}"})
     :cwd(cwd)
     :stdout(Command.PIPED)
-    :output()
-  local selected = output.stdout:gsub("\n", "")
-  if selected ~= "" then
-    ya.manager_emit("cd", { selected })
+    :spawn()
+  local lines = {}
+  while true do
+    local line, event = child:read_line()
+    if event ~= 0 then break end
+    line = line:gsub("\n", "")
+    table.insert(lines, line)
+  end
+  if #lines == 0 then return end
+  if #lines == 1 then
+    ya.manager_emit("cd", { lines[1] })
+  elseif lines[1] == "tab" then
+    ya.manager_emit("tab_create", { lines[2] })
   end
 end
 
