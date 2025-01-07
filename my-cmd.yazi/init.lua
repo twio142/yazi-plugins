@@ -6,6 +6,11 @@ _G.Command = _G.Command or {}
 local M = {}
 
 M.on_selection = function(mode)
+  for i = 1, #cx.tabs do
+    for _, url in pairs(cx.tabs[i].selected) do
+      ya.manager_emit("toggle", { tostring(url), state = "on" })
+    end
+  end
   if #cx.active.selected == 0 then
     return
   end
