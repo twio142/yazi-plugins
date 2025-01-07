@@ -58,8 +58,8 @@ M.fd = function(cwd)
   local _fd = function(k, t)
     return string.format("%s:reload(fd -t%s -HL --strip-cwd-prefix=always .)+change-header( %s )", k, t, _hd(t))
   end
-  local output = Command("fzf")
-    :args({"--preview", "fzf-preview {}", "--preview-window=up,60%"})
+  local child = Command("fzf")
+    :args({"--preview", "fzf-preview {}", "--preview-window=up,60%", "-m"})
     :args({"--bind", _fd("start", "f")})
     :args({"--bind", _fd("alt-d", "d")})
     :args({"--bind", _fd("alt-l", "l")})
@@ -68,10 +68,24 @@ M.fd = function(cwd)
     :args({"--bind", _fd("alt-x", "x")})
     :cwd(cwd)
     :stdout(Command.PIPED)
-    :output()
-  local selected = output.stdout:gsub("\n", "")
-  if selected ~= "" then
-    ya.manager_emit(selected:find("/$") and "cd" or "reveal", { selected })
+    :spawn()
+  local files = {}
+  while true do
+    local file, event = child:read_line()
+    if event ~= 0 then break end
+    file = file:gsub("\n", "")
+    table.insert(files, file)
+  end
+  if #files == 1 then
+    ya.manager_emit(files[1]:find("/$") and "cd" or "reveal", { files[1] })
+  elseif #files > 1 then
+    local last_file
+    for _, file in ipairs(files) do
+      file = cwd .. "/" .. file
+      ya.manager_emit("toggle", { file, state = "on" })
+      last_file = file
+    end
+    ya.manager_emit("reveal", { last_file })
   end
 end
 
@@ -92,21 +106,30 @@ M.fif = function(cwd)
     table.insert(files, file)
   end
   if #files == 0 then return end
-  local args = ""
-  if #files == 1 then
-    args = args .. ya.quote(files[1])
-    if ln then
-      args = args .. ' +' .. ln
-    end
-  else
-    for _, file in ipairs(files) do
-      args = args .. ya.quote(file) .. ' '
-    end
-  end
   if os.getenv("TMUX_POPUP") then
-    local script = os.getenv("XDG_CONFIG_HOME") .. "/tmux/scripts/open_in_vim.sh"
-    ya.manager_emit("shell", { script.." '' "..args.."; tmux popup -C" })
+    if #files == 1 then
+      ya.manager_emit("reveal", { files[1] })
+    else
+      local last_file
+      for _, file in ipairs(files) do
+        file = cwd .. "/" .. file
+        ya.manager_emit("toggle", { file, state = "on" })
+        last_file = file
+      end
+      ya.manager_emit("reveal", { last_file })
+    end
   else
+    local args = ""
+    if #files == 1 then
+      args = args .. ya.quote(files[1])
+      if ln then
+        args = args .. ' +' .. ln
+      end
+    else
+      for _, file in ipairs(files) do
+        args = args .. ya.quote(file) .. ' '
+      end
+    end
     ya.manager_emit("shell", { "nvim "..args, block = true })
   end
 end
@@ -140,11 +163,10 @@ M.git = function(cwd)
   end
 end
 
-M.obsearch = function(cwd)
+M.obsearch = function()
   ya.hide()
   local child = Command("obsearch")
     :args({"-o"})
-    :cwd(cwd)
     :stdout(Command.PIPED)
     :spawn()
   local files = {}
@@ -157,21 +179,29 @@ M.obsearch = function(cwd)
     table.insert(files, file)
   end
   if #files == 0 then return end
-  local args = ""
-  if #files == 1 then
-    args = args .. ya.quote(files[1])
-    if ln then
-      args = args .. ' +' .. ln
-    end
-  else
-    for _, file in ipairs(files) do
-      args = args .. ya.quote(file) .. ' '
-    end
-  end
   if os.getenv("TMUX_POPUP") then
-    local script = os.getenv("XDG_CONFIG_HOME") .. "/tmux/scripts/open_in_vim.sh"
-    ya.manager_emit("shell", { script.." '' "..args.."; tmux popup -C" })
+    if #files == 1 then
+      ya.manager_emit("reveal", { files[1] })
+    else
+      local last_file
+      for _, file in ipairs(files) do
+        ya.manager_emit("toggle", { file, state = "on" })
+        last_file = file
+      end
+      ya.manager_emit("reveal", { last_file })
+    end
   else
+    local args = ""
+    if #files == 1 then
+      args = args .. ya.quote(files[1])
+      if ln then
+        args = args .. ' +' .. ln
+      end
+    else
+      for _, file in ipairs(files) do
+        args = args .. ya.quote(file) .. ' '
+      end
+    end
     ya.manager_emit("shell", { "nvim "..args, block = true })
   end
 end
