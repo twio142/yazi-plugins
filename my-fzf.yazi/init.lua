@@ -6,7 +6,8 @@ _G.Command = _G.Command or {}
 
 local M = {}
 
-M.z = function(cwd)
+M.z = function(s)
+  local cwd = s.cwd
   ya.hide()
   local _z = ":reload:zoxide query {q} -l --exclude $PWD || true"
   local child = Command("fzf")
@@ -34,7 +35,8 @@ M.z = function(cwd)
   end
 end
 
-M.fd = function(cwd)
+M.fd = function(s)
+  local cwd = s.cwd
   ya.hide()
   local _hd = function(t)
     local types = {
@@ -89,7 +91,8 @@ M.fd = function(cwd)
   end
 end
 
-M.fif = function(cwd)
+M.fif = function(s)
+  local cwd = s.cwd
   ya.hide()
   local child = Command("fif")
     :args({"-o"})
@@ -134,7 +137,8 @@ M.fif = function(cwd)
   end
 end
 
-M.git = function(cwd)
+M.git = function(s)
+  local cwd = s.cwd
   ya.hide()
   local child = Command("awk")
     :arg("/recentrepos:/ {found=1; next} found && /^[^[:space:]]/ {exit} found {print}")
@@ -206,12 +210,41 @@ M.obsearch = function()
   end
 end
 
-local state = ya.sync(function() return tostring(cx.active.current.cwd) end)
+M.selected = function(s)
+  local selected = s.selected
+  if #selected == 0 then return end
+  ya.hide()
+  local tmpfile = Command("mktemp"):args({"/tmp/yazi.XXXXXX"}):stdout(Command.PIPED):output().stdout:gsub("\n", "")
+  ya.manager_emit("shell", { [[printf '%s\n' "$@" > ]]..tmpfile })
+  local output = Command("fzf")
+    :args({"--preview", "fzf-preview {}", "--preview-window", "up,60%"})
+    :args({"--bind", "start:reload:cat "..tmpfile})
+    :args({"--bind", [[ctrl-x:reload:ya emit toggle {} --state=off && ya emit shell 'printf "%s\n" "$@" > ]]..tmpfile.."' && sleep 0.1 && cat "..tmpfile})
+    :args({"--header", "\x1b[1;36m⌃X\x1b[0m Deselect"})
+    :stdout(Command.PIPED)
+    :output()
+  local file = output.stdout:gsub("\n", "")
+  if file ~= "" then
+    ya.manager_emit("reveal", { file })
+  end
+  ya.manager_emit("shell", { "rm "..tmpfile })
+end
+
+local state = ya.sync(function()
+  local selected = {}
+  for _, url in pairs(cx.active.selected) do
+    table.insert(selected, tostring(url))
+  end
+  return {
+    cwd = tostring(cx.active.current.cwd),
+    selected = selected,
+  }
+end)
 
 return {
   entry = function(_, job)
-    local cwd = state()
-    M[job.args[1]](cwd)
+    local s = state()
+    M[job.args[1]](s)
   end
 }
 
