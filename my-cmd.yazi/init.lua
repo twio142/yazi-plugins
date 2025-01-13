@@ -6,12 +6,14 @@ _G.Command = _G.Command or {}
 local M = {}
 
 M.on_selection = function(mode)
+  local selected = #cx.active.selected
   for i = 1, #cx.tabs do
     for _, url in pairs(cx.tabs[i].selected) do
       ya.manager_emit("toggle", { tostring(url), state = "on" })
+      selected = selected + 1
     end
   end
-  if #cx.active.selected == 0 then
+  if selected == 0 then
     return
   end
   local h = cx.active.current.hovered
