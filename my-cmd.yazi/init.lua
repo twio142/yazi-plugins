@@ -38,6 +38,25 @@ M.on_selection = function(mode)
     if is_dir then
       ya.manager_emit("leave", {})
     end
+  elseif mode == "copy-dir" then
+    local dir = Url("Folder with selected items")
+    if is_dir then
+      dir = h.url:join(dir)
+    else
+      dir = h.url:parent():join(dir)
+    end
+    dir = tostring(dir)
+    local cmd = string.format([[mkdir -p '%s'; cp -a "$@" '%s'; ya emit reveal '%s'; ya emit unyank]], dir, dir, dir)
+    ya.manager_emit("shell", { cmd })
+  elseif mode == "move-dir" then
+    local dir = Url("Folder with selected items")
+    if is_dir then
+      dir = h.url:join(dir)
+    else
+      dir = h.url:parent():join(dir)
+    end
+    local cmd = string.format([[mkdir -p '%s'; mv "$@" '%s'; ya emit reveal '%s'; ya emit unyank]], tostring(dir), tostring(dir), tostring(dir))
+    ya.manager_emit("shell", { cmd })
   elseif mode == "symlink" then
     if is_dir then
       ya.manager_emit("enter", {})
