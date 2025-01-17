@@ -79,11 +79,15 @@ M.fd = function(s)
     table.insert(files, file)
   end
   if #files == 1 then
-    ya.manager_emit(files[1]:find("/$") and "cd" or "reveal", { files[1] })
+    local cha, err = fs.cha(Url(cwd):join(Url(files[1])), true)
+    if err then
+      return
+    end
+    ya.manager_emit(cha.is_dir and "cd" or "reveal", { files[1] })
   elseif #files > 1 then
     local last_file
     for _, file in ipairs(files) do
-      file = cwd .. "/" .. file
+      file = tostring(Url(cwd):join(Url(file)))
       ya.manager_emit("toggle", { file, state = "on" })
       last_file = file
     end
@@ -115,7 +119,7 @@ M.fif = function(s)
     else
       local last_file
       for _, file in ipairs(files) do
-        file = cwd .. "/" .. file
+        file = tostring(Url(cwd):join(Url(file)))
         ya.manager_emit("toggle", { file, state = "on" })
         last_file = file
       end
@@ -126,11 +130,11 @@ M.fif = function(s)
     if #files == 1 then
       args = args .. ya.quote(files[1])
       if ln then
-        args = args .. ' +' .. ln
+        args = args .. " +" .. ln
       end
     else
       for _, file in ipairs(files) do
-        args = args .. ya.quote(file) .. ' '
+        args = args .. ya.quote(file) .. " "
       end
     end
     ya.manager_emit("shell", { "nvim "..args, block = true })
@@ -199,11 +203,11 @@ M.obsearch = function()
     if #files == 1 then
       args = args .. ya.quote(files[1])
       if ln then
-        args = args .. ' +' .. ln
+        args = args .. " +" .. ln
       end
     else
       for _, file in ipairs(files) do
-        args = args .. ya.quote(file) .. ' '
+        args = args .. ya.quote(file) .. " "
       end
     end
     ya.manager_emit("shell", { "nvim "..args, block = true })
