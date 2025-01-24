@@ -18,67 +18,53 @@ M.on_selection = function(mode)
 	end
 	local h = cx.active.current.hovered
 	local is_dir = h and h.cha.is_dir
-	if mode == "copy" then
+	if mode == "copy" or mode == "copy-force" then
 		if is_dir then
 			ya.manager_emit("enter", {})
 		end
 		ya.manager_emit("yank", {})
-		ya.manager_emit("paste", {})
+		ya.manager_emit("paste", { force = mode == "copy-force" })
 		ya.manager_emit("unyank", {})
 		if is_dir then
 			ya.manager_emit("leave", {})
 		end
-	elseif mode == "move" then
+	elseif mode == "move" or mode == "move-force" then
 		if is_dir then
 			ya.manager_emit("enter", {})
 		end
 		ya.manager_emit("yank", { cut = true })
-		ya.manager_emit("paste", {})
+		ya.manager_emit("paste", { force = mode == "move-force" })
 		ya.manager_emit("unyank", {})
 		if is_dir then
 			ya.manager_emit("leave", {})
 		end
-	elseif mode == "copy-dir" then
-		local dir = Url("Folder with selected items")
-		if is_dir then
-			dir = h.url:join(dir)
-		else
-			dir = h.url:parent():join(dir)
-		end
+	elseif mode == "move-dir" or mode == "copy-dir" then
+		local dir = (is_dir and h.url or h.url:parent()):join(Url("Folder with selected items"))
 		dir = tostring(dir)
-		local cmd =
-			string.format([[mkdir -p '%s'; cp -a "$@" '%s'; ya emit reveal '%s'; ya emit unyank]], dir, dir, dir)
-		ya.manager_emit("shell", { cmd })
-	elseif mode == "move-dir" then
-		local dir = Url("Folder with selected items")
-		if is_dir then
-			dir = h.url:join(dir)
-		else
-			dir = h.url:parent():join(dir)
-		end
 		local cmd = string.format(
-			[[mkdir -p '%s'; mv "$@" '%s'; ya emit reveal '%s'; ya emit unyank]],
-			tostring(dir),
-			tostring(dir),
-			tostring(dir)
+			[[mkdir -p '%s'; %s "$@" '%s'; ya emit reveal '%s'; ya emit unyank]],
+			dir,
+			mode == "move-dir" and "mv" or "cp -a",
+			dir,
+			dir
 		)
 		ya.manager_emit("shell", { cmd })
-	elseif mode == "symlink" then
+	elseif mode == "symlink" or mode == "symlink-force" then
 		if is_dir then
 			ya.manager_emit("enter", {})
 		end
 		ya.manager_emit("yank", {})
-		ya.manager_emit("link", {})
+		ya.manager_emit("link", { force = mode == "symlink-force" })
 		ya.manager_emit("unyank", {})
 		if is_dir then
 			ya.manager_emit("leave", {})
 		end
-	elseif mode == "hardlink" then
+	elseif mode == "hardlink" or mode == "hardlink-force" then
 		if is_dir then
 			ya.manager_emit("enter", {})
 		end
 		ya.manager_emit("yank", {})
-		ya.manager_emit("hardlink", { follow = true })
+		ya.manager_emit("hardlink", { follow = true, force = mode == "hardlink-force" })
 		ya.manager_emit("unyank", {})
 		if is_dir then
 			ya.manager_emit("leave", {})
