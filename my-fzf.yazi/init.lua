@@ -61,7 +61,7 @@ M.fd = function(s)
 		return table.concat(header, " / ")
 	end
 	local _fd = function(k, t)
-		local base = string.format("fd -t%s -HL --strip-cwd-prefix=always", t)
+		local base = string.format("fd -t%s -H%s --strip-cwd-prefix=always", t, t == 'l' and '' or 'L')
 		return string.format("%s:reload([ $FZF_PROMPT = '> ' ] && %s || %s --no-ignore-vcs)+change-header( %s )", k, base, base, _hd(t))
 	end
 	local child = Command("fzf")
