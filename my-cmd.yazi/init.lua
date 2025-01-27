@@ -90,35 +90,41 @@ M.smart = function(arg)
 		if not h then
 			return
 		end
-		if os.getenv("TMUX_POPUP") then
-			local cmd = ""
-			if h.cha.is_dir then
-				local script = "find_empty_shell"
-				cmd = string.format("%s/tmux/scripts/%s.sh '' cd ", os.getenv("XDG_CONFIG_HOME"), script)
-			else
-				local files = cx.active.current.files
-				for i = 1, #files do
-					if files[i]:is_hovered() then
-						local mime = files[i]:mime()
-						if mime:find("^text/") then
-							local script = "open_in_vim"
-							cmd = string.format("%s/tmux/scripts/%s.sh '' ", os.getenv("XDG_CONFIG_HOME"), script)
-							break
-						else
-							ya.manager_emit("open", { hovered = true })
-							return
-						end
-					end
+		local function hovered_mime()
+			local files = cx.active.current.files
+			for i = 1, #files do
+				if files[i]:is_hovered() then
+					return files[i]:mime()
 				end
 			end
-			cmd = cmd .. ya.quote(tostring(h.url)) .. "; tmux popup -C"
-			ya.manager_emit("shell", { cmd })
-		else
-			if h.cha.is_dir then
-				ya.manager_emit("shell", { "cd '" .. tostring(h.url) .. "'; $SHELL -l", block = true })
-			else
-				ya.manager_emit("open", { hovered = true })
+		end
+		if os.getenv("NVIM") then
+			if not h.cha.is_dir then
+				if hovered_mime():find("^text/") then
+					ya.manager_emit("shell", { 'nvr -cc quit "$1"' })
+				else
+					ya.manager_emit("open", { hovered = true })
+				end
+				return
 			end
+		end
+		if os.getenv("TMUX_POPUP") then
+			local cmd = 'tmux_run %s "$1"; tmux popup -C'
+			if h.cha.is_dir then
+				cmd = cmd:format("cd")
+			else
+				if hovered_mime():find("^text/") then
+					cmd = cmd:format("nvim")
+				else
+					ya.manager_emit("open", { hovered = true })
+					return
+				end
+			end
+			ya.manager_emit("shell", { cmd })
+		elseif h.cha.is_dir then
+			ya.manager_emit("shell", { 'cd "$1"; $SHELL -l', block = true })
+		else
+			ya.manager_emit("open", { hovered = true })
 		end
 	elseif arg == "alt-enter" then
 		if not os.getenv("TMUX") then
@@ -128,12 +134,7 @@ M.smart = function(arg)
 		if not h then
 			return
 		end
-		local script = h.cha.is_dir and "find_empty_shell" or "open_in_vim"
-		local cmd = string.format("%s/tmux/scripts/%s.sh '' -n ", os.getenv("XDG_CONFIG_HOME"), script)
-		if h.cha.is_dir then
-			cmd = cmd .. "cd "
-		end
-		cmd = cmd .. ya.quote(tostring(h.url)) .. "; tmux popup -C"
+		local cmd = string.format('NEWW=1 tmux_run %s "$1"; tmux popup -C', h.cha.is_dir and "cd" or "nvim")
 		ya.manager_emit("shell", { cmd })
 	elseif arg == "esc" then
 		if #cx.yanked > 0 then
