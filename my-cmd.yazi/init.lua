@@ -18,6 +18,8 @@ M.on_selection = function(mode)
 	end
 	local h = cx.active.current.hovered
 	local is_dir = h and h.cha.is_dir
+	local cache_file = "/tmp/yazi_on_selection"
+	ya.manager_emit("shell", { string.format('ls "%s" > %s', is_dir and "$0" or "$PWD", cache_file) })
 	if mode == "copy" or mode == "copy-force" then
 		if is_dir then
 			ya.manager_emit("enter", {})
@@ -25,9 +27,6 @@ M.on_selection = function(mode)
 		ya.manager_emit("yank", {})
 		ya.manager_emit("paste", { force = mode == "copy-force" })
 		ya.manager_emit("unyank", {})
-		if is_dir then
-			ya.manager_emit("leave", {})
-		end
 	elseif mode == "move" or mode == "move-force" then
 		if is_dir then
 			ya.manager_emit("enter", {})
@@ -35,10 +34,7 @@ M.on_selection = function(mode)
 		ya.manager_emit("yank", { cut = true })
 		ya.manager_emit("paste", { force = mode == "move-force" })
 		ya.manager_emit("unyank", {})
-		if is_dir then
-			ya.manager_emit("leave", {})
-		end
-	elseif mode == "move-dir" or mode == "copy-dir" then
+	elseif mode == "move-new-dir" or mode == "copy-new-dir" then
 		local dir = (is_dir and h.url or h.url:parent()):join(Url("Folder with selected items"))
 		dir = tostring(dir)
 		local cmd = string.format(
@@ -49,6 +45,7 @@ M.on_selection = function(mode)
 			dir
 		)
 		ya.manager_emit("shell", { cmd })
+		return
 	elseif mode == "symlink" or mode == "symlink-force" then
 		if is_dir then
 			ya.manager_emit("enter", {})
@@ -56,9 +53,6 @@ M.on_selection = function(mode)
 		ya.manager_emit("yank", {})
 		ya.manager_emit("link", { force = mode == "symlink-force" })
 		ya.manager_emit("unyank", {})
-		if is_dir then
-			ya.manager_emit("leave", {})
-		end
 	elseif mode == "hardlink" or mode == "hardlink-force" then
 		if is_dir then
 			ya.manager_emit("enter", {})
@@ -71,6 +65,7 @@ M.on_selection = function(mode)
 		end
 	elseif mode == "delete" then
 		ya.manager_emit("remove", {})
+		return
 	elseif mode == "edit" then
 		if os.getenv("TMUX_POPUP") then
 			local cmd = os.getenv("XDG_CONFIG_HOME") .. "/tmux/scripts/open_in_vim.sh '' \"$@\"; tmux popup -C"
@@ -78,10 +73,12 @@ M.on_selection = function(mode)
 		else
 			ya.manager_emit("open", {})
 		end
+		return
 	elseif mode == "rename" then
 		ya.manager_emit("rename", {})
 	end
 	ya.manager_emit("escape", {})
+	ya.manager_emit("shell", { string.format('ls "$PWD" | grep -F -v -x -f %s | head -n1 | xargs -I _ ya emit reveal "_"', cache_file) })
 end
 
 M.smart = function(arg)
