@@ -7,6 +7,8 @@ local M = {}
 
 M.on_selection = function(mode)
 	local selected = #cx.active.selected
+	local cache_file = "/tmp/yazi_on_selection"
+	ya.manager_emit("shell", { 'ls "$PWD" > ' .. cache_file })
 	for i = 1, #cx.tabs do
 		for _, url in pairs(cx.tabs[i].selected) do
 			ya.manager_emit("toggle", { tostring(url), state = "on" })
@@ -49,6 +51,7 @@ M.on_selection = function(mode)
 			dir
 		)
 		ya.manager_emit("shell", { cmd })
+		return
 	elseif mode == "symlink" or mode == "symlink-force" then
 		if is_dir then
 			ya.manager_emit("enter", {})
@@ -71,6 +74,7 @@ M.on_selection = function(mode)
 		end
 	elseif mode == "delete" then
 		ya.manager_emit("remove", {})
+		return
 	elseif mode == "edit" then
 		if os.getenv("TMUX_POPUP") then
 			local cmd = os.getenv("XDG_CONFIG_HOME") .. "/tmux/scripts/open_in_vim.sh '' \"$@\"; tmux popup -C"
@@ -78,10 +82,12 @@ M.on_selection = function(mode)
 		else
 			ya.manager_emit("open", {})
 		end
+		return
 	elseif mode == "rename" then
 		ya.manager_emit("rename", {})
 	end
 	ya.manager_emit("escape", {})
+	ya.manager_emit("shell", { string.format('ls "$PWD" | grep -F -v -x -f %s | head -n1 | xargs -I _ ya emit reveal "_"', cache_file) })
 end
 
 M.smart = function(arg)
