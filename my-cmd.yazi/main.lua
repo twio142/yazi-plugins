@@ -95,7 +95,7 @@ M.smart = function(arg)
 				end
 			end
 		end
-		if os.getenv("NVIM") then
+		if os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
 			if not h.cha.is_dir then
 				if hovered_mime():find("^text/") then
 					ya.manager_emit("shell", { 'nvr -cc quit "$1"' })
@@ -142,7 +142,7 @@ M.smart = function(arg)
 	elseif arg == "up" then
 		local cursor = cx.active.current.cursor
 		if cursor == 0 then
-			ya.manager_emit("arrow", { 99999999 })
+			ya.manager_emit("arrow", { "bot" })
 		else
 			ya.manager_emit("arrow", { -1 })
 		end
@@ -150,7 +150,7 @@ M.smart = function(arg)
 		local cursor = cx.active.current.cursor
 		local length = #cx.active.current.files
 		if cursor == length - 1 then
-			ya.manager_emit("arrow", { -99999999 })
+			ya.manager_emit("arrow", { "top" })
 		else
 			ya.manager_emit("arrow", { 1 })
 		end
