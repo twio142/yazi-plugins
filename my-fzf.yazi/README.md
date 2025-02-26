@@ -2,6 +2,7 @@
 
 - `z`: zoxide
 - `fd`: fd-find
-- `mru`: most recently used
 - `fif`: rg-find-in-file
 - `git`: recent git repos
+- `obsearch`: search in obsidian vault
+- `selected`: selected files in yazi
