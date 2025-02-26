@@ -67,7 +67,9 @@ M.on_selection = function(mode)
 		ya.manager_emit("remove", {})
 		return
 	elseif mode == "edit" then
-		if os.getenv("TMUX_POPUP") then
+		if os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
+			ya.manager_emit("shell", { 'nvr -cc quit "$@"' })
+		elseif os.getenv("TMUX_POPUP") then
 			local cmd = os.getenv("XDG_CONFIG_HOME") .. "/tmux/scripts/open_in_vim.sh '' \"$@\"; tmux popup -C"
 			ya.manager_emit("shell", { cmd })
 		else
@@ -123,7 +125,7 @@ M.smart = function(arg)
 		else
 			ya.manager_emit("open", { hovered = true })
 		end
-	elseif arg == "alt-enter" then
+	elseif arg == "open-neww" then
 		if not os.getenv("TMUX") then
 			return
 		end
@@ -172,7 +174,7 @@ M.smart = function(arg)
 		if target and target.cha.is_dir then
 			ya.manager_emit("cd", { target.url })
 		end
-	elseif arg == "new" then
+	elseif arg == "n" then
 		local files = cx.active.current.files
 		for i = 1, #files do
 			if files[i]:found() then
@@ -181,7 +183,7 @@ M.smart = function(arg)
 			end
 		end
 		ya.manager_emit("create", {})
-	elseif arg == "tab" then
+	elseif arg == "create-tab" then
 		local h = cx.active.current.hovered
 		ya.manager_emit("tab_create", h and h.cha.is_dir and { h.url } or { current = true })
 	elseif arg == "next-tab" then
