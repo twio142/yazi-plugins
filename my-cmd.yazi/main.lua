@@ -78,6 +78,20 @@ M.on_selection = function(mode)
 		return
 	elseif mode == "rename" then
 		ya.manager_emit("rename", {})
+	elseif mode == "exec" then
+		ya.manager_emit("shell", { [=[
+			cache=/tmp/yazi_map_selection;
+			cmd="\n"
+			printf '' > $cache;
+			[ "$#" -eq 0 ] && set -- "$0"
+			for x in "$@"; do
+				(( i++ ))
+				echo "# $i -> $x" >> $cache
+				cmd="$cmd \$$i"
+			done;
+			echo $cmd >> $cache
+			nvim $cache +$ && eval "$(cat $cache)" || true
+		]=], block = true })
 	end
 	ya.manager_emit("escape", {})
 	ya.manager_emit("shell", { string.format('ls "$PWD" | grep -F -v -x -f %s | head -n1 | xargs -I _ ya emit reveal "_"', cache_file) })
