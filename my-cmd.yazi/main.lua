@@ -6,6 +6,8 @@ _G.cx = _G.cx or {}
 local M = {}
 
 M.on_selection = function(mode)
+	local h = cx.active.current.hovered
+	local is_dir = h and h.cha.is_dir
 	local selected = #cx.active.selected
 	for i = 1, #cx.tabs do
 		for _, url in pairs(cx.tabs[i].selected) do
@@ -16,10 +18,6 @@ M.on_selection = function(mode)
 	if selected == 0 then
 		return
 	end
-	local h = cx.active.current.hovered
-	local is_dir = h and h.cha.is_dir
-	local cache_file = "/tmp/yazi_on_selection"
-	ya.manager_emit("shell", { string.format('ls "%s" > %s', is_dir and "$0" or "$PWD", cache_file) })
 	if mode == "copy" or mode == "copy-force" then
 		if is_dir then
 			ya.manager_emit("enter", {})
@@ -78,9 +76,22 @@ M.on_selection = function(mode)
 		return
 	elseif mode == "rename" then
 		ya.manager_emit("rename", {})
+	elseif mode == "exec" then
+		ya.manager_emit("shell", { [=[
+			cache=/tmp/yazi_map_selection;
+			cmd="\n"
+			printf '' > $cache;
+			[ "$#" -eq 0 ] && set -- "$0"
+			for x in "$@"; do
+				(( i++ ))
+				echo "# $i -> $x" >> $cache
+				cmd="$cmd \$$i"
+			done;
+			echo $cmd >> $cache
+			nvim $cache +$ && eval "$(cat $cache)" || true
+		]=], block = true })
 	end
 	ya.manager_emit("escape", {})
-	ya.manager_emit("shell", { string.format('ls "$PWD" | grep -F -v -x -f %s | head -n1 | xargs -I _ ya emit reveal "_"', cache_file) })
 end
 
 M.smart = function(arg)
