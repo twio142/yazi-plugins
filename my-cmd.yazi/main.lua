@@ -77,7 +77,8 @@ M.on_selection = function(mode)
 	elseif mode == "rename" then
 		ya.manager_emit("rename", {})
 	elseif mode == "exec" then
-		ya.manager_emit("shell", { [=[
+		ya.manager_emit("shell", {
+			[=[
 			cache=/tmp/yazi_map_selection;
 			cmd="\n"
 			printf '' > $cache;
@@ -89,7 +90,9 @@ M.on_selection = function(mode)
 			done;
 			echo $cmd >> $cache
 			nvim $cache +$ && eval "$(cat $cache)" || true
-		]=], block = true })
+		]=],
+			block = true,
+		})
 	end
 	ya.manager_emit("escape", {})
 end
@@ -97,9 +100,6 @@ end
 M.smart = function(arg)
 	if arg == "enter" then
 		local h = cx.active.current.hovered
-		if not h then
-			return
-		end
 		local function hovered_mime()
 			local files = cx.active.current.files
 			for i = 1, #files do
@@ -108,27 +108,21 @@ M.smart = function(arg)
 				end
 			end
 		end
-		if os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
-			if not h.cha.is_dir then
-				if hovered_mime():find("^text/") then
-					ya.manager_emit("shell", { 'nvr -cc quit "$1"' })
-				else
-					ya.manager_emit("open", { hovered = true })
-				end
-				return
+		if os.getenv("NVIM") and not os.getenv("TMUX_POPUP") and not h.cha.is_dir then
+			if hovered_mime():find("^text/") then
+				ya.manager_emit("shell", { 'nvr -cc quit "$1"' })
+			else
+				ya.manager_emit("open", { hovered = true })
 			end
-		end
-		if os.getenv("TMUX_POPUP") then
+		elseif os.getenv("TMUX_POPUP") then
 			local cmd = 'tmux_run %s "$1"; tmux popup -C'
 			if h.cha.is_dir then
 				cmd = cmd:format("cd")
+			elseif hovered_mime():find("^text/") then
+				cmd = cmd:format("nvim")
 			else
-				if hovered_mime():find("^text/") then
-					cmd = cmd:format("nvim")
-				else
-					ya.manager_emit("open", { hovered = true })
-					return
-				end
+				ya.manager_emit("open", { hovered = true })
+				return
 			end
 			ya.manager_emit("shell", { cmd })
 		elseif h.cha.is_dir then
@@ -141,9 +135,6 @@ M.smart = function(arg)
 			return
 		end
 		local h = cx.active.current.hovered
-		if not h then
-			return
-		end
 		local cmd = string.format('NEWW=1 tmux_run %s "$1"; tmux popup -C', h.cha.is_dir and "cd" or "nvim")
 		ya.manager_emit("shell", { cmd })
 	elseif arg == "esc" then
@@ -185,7 +176,7 @@ M.smart = function(arg)
 		if target and target.cha.is_dir then
 			ya.manager_emit("cd", { target.url })
 		end
-	elseif arg == "n" then
+	elseif arg == "N" then
 		local files = cx.active.current.files
 		for i = 1, #files do
 			if files[i]:found() then
@@ -203,6 +194,24 @@ M.smart = function(arg)
 			ya.manager_emit("tab_create", h and h.cha.is_dir and { h.url } or { current = true })
 		else
 			ya.manager_emit("tab_switch", { 1, relative = true })
+		end
+	elseif arg == "split" then
+		local h = cx.active.current.hovered
+		if h.cha.is_dir and os.getenv("TMUX") then
+			ya.manager_emit("shell", { 'tmux splitw -v -c "$1"; tmux popup -C' })
+		elseif os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
+			ya.manager_emit("shell", { 'nvr -cc quit -cc split "$1"' })
+		elseif os.getenv("TMUX") then
+			ya.manager_emit("shell", { 'tmux splitw -v "nvim "$1""; tmux popup -C' })
+		end
+	elseif arg == "vsplit" then
+		local h = cx.active.current.hovered
+		if h.cha.is_dir and os.getenv("TMUX") then
+			ya.manager_emit("shell", { 'tmux splitw -h -c "$1"; tmux popup -C' })
+		elseif os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
+			ya.manager_emit("shell", { 'nvr -cc quit -cc vsplit "$1"' })
+		elseif os.getenv("TMUX") then
+			ya.manager_emit("shell", { 'tmux splitw -h "nvim "$1""; tmux popup -C' })
 		end
 	end
 end
