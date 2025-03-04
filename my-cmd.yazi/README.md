@@ -11,6 +11,8 @@
     - `N`: find previous / create new file
     - `create-tab`: create a tab on the hovered file, enter if hovered on a directory
     - `next-tab`: go to next tab, create if not exists
+    - `split`: open hovered file in a split
+    - `vsplit`: open hovered file in a vertical split
 - `on_selection`
     - Act on selected files across all tabs
     - `copy` / `copy-force`: copy selected files to the hovered path
