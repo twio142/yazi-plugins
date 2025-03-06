@@ -1,3 +1,4 @@
+--- @since 25.2.26
 local M = {}
 
 function M.find()
@@ -11,11 +12,11 @@ function M.find()
 	while true do
 		local value, event = input:recv()
 		if event ~= 1 and event ~= 3 then
-			ya.manager_emit("escape", { find = true })
+			ya.mgr_emit("escape", { find = true })
 			break
 		end
 
-		ya.manager_emit("find_do", { value, smart = true })
+		ya.mgr_emit("find_do", { value, smart = true })
 
 		if event == 1 then
 			return
@@ -51,16 +52,16 @@ function M.filter()
 	while true do
 		local value, event = input:recv()
 		if event ~= 1 and event ~= 3 then
-			ya.manager_emit("escape", { filter = true })
+			ya.mgr_emit("escape", { filter = true })
 			break
 		end
 
-		ya.manager_emit("filter_do", { value, smart = true })
+		ya.mgr_emit("filter_do", { value, smart = true })
 
 		local h = hovered()
 		if event == 1 then
 			if h.url then
-				ya.manager_emit("reveal", { h.url })
+				ya.mgr_emit("reveal", { h.url })
 			end
 			return
 		end
@@ -73,19 +74,19 @@ function M.smart_filter()
 	while true do
 		local value, event = input:recv()
 		if event ~= 1 and event ~= 3 then
-			ya.manager_emit("escape", { filter = true })
+			ya.mgr_emit("escape", { filter = true })
 			break
 		end
 
-		ya.manager_emit("filter_do", { value, smart = true })
+		ya.mgr_emit("filter_do", { value, smart = true })
 
 		local h = hovered()
 		if h.unique and h.is_dir then
-			ya.manager_emit("escape", { filter = true })
-			ya.manager_emit("enter", {})
+			ya.mgr_emit("escape", { filter = true })
+			ya.mgr_emit("enter", {})
 			input = prompt("Smart filter:")
 		elseif event == 1 then
-			ya.manager_emit("reveal", { h.url })
+			ya.mgr_emit("reveal", { h.url })
 			return
 		end
 	end
@@ -119,7 +120,7 @@ function M.git_search()
 		for _, file in ipairs(files) do
 			args = args .. string.format(' -g "%s"', file)
 		end
-		ya.manager_emit("search_do", { via = "rg", args = args })
+		ya.mgr_emit("search_do", { via = "rg", args = args })
 	else
 		ya.notify({ title = "Git search", content = "No changed files", timeout = 4 })
 	end

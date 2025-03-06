@@ -1,3 +1,4 @@
+--- @since 25.2.26
 --- @diagnostic disable: undefined-global
 _G.ya = _G.ya or {}
 _G.cx = _G.cx or {}
@@ -32,9 +33,9 @@ M.z = function(s)
 		return
 	end
 	if #lines == 1 then
-		ya.manager_emit("cd", { lines[1] })
+		ya.mgr_emit("cd", { lines[1] })
 	elseif lines[1] == "tab" then
-		ya.manager_emit("tab_create", { lines[2] })
+		ya.mgr_emit("tab_create", { lines[2] })
 	end
 end
 
@@ -90,15 +91,15 @@ M.fd = function(s)
 		if err then
 			return
 		end
-		ya.manager_emit(cha.is_dir and "cd" or "reveal", { files[1] })
+		ya.mgr_emit(cha.is_dir and "cd" or "reveal", { files[1] })
 	elseif #files > 1 then
 		local last_file
 		for _, file in ipairs(files) do
 			file = tostring(Url(cwd):join(Url(file)))
-			ya.manager_emit("toggle", { file, state = "on" })
+			ya.mgr_emit("toggle", { file, state = "on" })
 			last_file = file
 		end
-		ya.manager_emit("reveal", { last_file })
+		ya.mgr_emit("reveal", { last_file })
 	end
 end
 
@@ -122,15 +123,15 @@ M.fif = function(s)
 	end
 	if os.getenv("TMUX_POPUP") then
 		if #files == 1 then
-			ya.manager_emit("reveal", { files[1] })
+			ya.mgr_emit("reveal", { files[1] })
 		else
 			local last_file
 			for _, file in ipairs(files) do
 				file = tostring(Url(cwd):join(Url(file)))
-				ya.manager_emit("toggle", { file, state = "on" })
+				ya.mgr_emit("toggle", { file, state = "on" })
 				last_file = file
 			end
-			ya.manager_emit("reveal", { last_file })
+			ya.mgr_emit("reveal", { last_file })
 		end
 	else
 		local args = ""
@@ -144,7 +145,7 @@ M.fif = function(s)
 				args = args .. ya.quote(file) .. " "
 			end
 		end
-		ya.manager_emit("shell", { "nvim " .. args, block = true })
+		ya.mgr_emit("shell", { "nvim " .. args, block = true })
 	end
 end
 
@@ -180,7 +181,7 @@ M.git = function(s)
 	child:flush()
 	local selected = child:wait_with_output().stdout:gsub("\n", "")
 	if selected ~= "" then
-		ya.manager_emit("cd", { selected })
+		ya.mgr_emit("cd", { selected })
 	end
 end
 
@@ -203,14 +204,14 @@ M.obsearch = function()
 	end
 	if os.getenv("TMUX_POPUP") then
 		if #files == 1 then
-			ya.manager_emit("reveal", { files[1] })
+			ya.mgr_emit("reveal", { files[1] })
 		else
 			local last_file
 			for _, file in ipairs(files) do
-				ya.manager_emit("toggle", { file, state = "on" })
+				ya.mgr_emit("toggle", { file, state = "on" })
 				last_file = file
 			end
-			ya.manager_emit("reveal", { last_file })
+			ya.mgr_emit("reveal", { last_file })
 		end
 	else
 		local args = ""
@@ -224,7 +225,7 @@ M.obsearch = function()
 				args = args .. ya.quote(file) .. " "
 			end
 		end
-		ya.manager_emit("shell", { "nvim " .. args, block = true })
+		ya.mgr_emit("shell", { "nvim " .. args, block = true })
 	end
 end
 
@@ -235,7 +236,7 @@ M.selected = function(s)
 	end
 	ya.hide()
 	local tmpfile = Command("mktemp"):args({ "/tmp/yazi.XXXXXX" }):stdout(Command.PIPED):output().stdout:gsub("\n", "")
-	ya.manager_emit("shell", { [[printf '%s\n' "$@" > ]] .. tmpfile })
+	ya.mgr_emit("shell", { [[printf '%s\n' "$@" > ]] .. tmpfile })
 	local output = Command("fzf")
 		:args({ "--preview", "fzf-preview {}", "--preview-window", "up,60%" })
 		:args({ "--bind", "start:reload:cat " .. tmpfile })
@@ -251,9 +252,9 @@ M.selected = function(s)
 		:output()
 	local file = output.stdout:gsub("\n", "")
 	if file ~= "" then
-		ya.manager_emit("reveal", { file })
+		ya.mgr_emit("reveal", { file })
 	end
-	ya.manager_emit("shell", { "rm " .. tmpfile })
+	ya.mgr_emit("shell", { "rm " .. tmpfile })
 end
 
 local state = ya.sync(function()
