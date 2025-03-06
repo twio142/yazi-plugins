@@ -1,3 +1,4 @@
+--- @since 25.2.26
 --- @sync entry
 --- @diagnostic disable: undefined-global
 _G.ya = _G.ya or {}
@@ -11,7 +12,7 @@ M.on_selection = function(mode)
 	local selected = #cx.active.selected
 	for i = 1, #cx.tabs do
 		for _, url in pairs(cx.tabs[i].selected) do
-			ya.manager_emit("toggle", { tostring(url), state = "on" })
+			ya.mgr_emit("toggle", { tostring(url), state = "on" })
 			selected = selected + 1
 		end
 	end
@@ -20,18 +21,18 @@ M.on_selection = function(mode)
 	end
 	if mode == "copy" or mode == "copy-force" then
 		if is_dir then
-			ya.manager_emit("enter", {})
+			ya.mgr_emit("enter", {})
 		end
-		ya.manager_emit("yank", {})
-		ya.manager_emit("paste", { force = mode == "copy-force" })
-		ya.manager_emit("unyank", {})
+		ya.mgr_emit("yank", {})
+		ya.mgr_emit("paste", { force = mode == "copy-force" })
+		ya.mgr_emit("unyank", {})
 	elseif mode == "move" or mode == "move-force" then
 		if is_dir then
-			ya.manager_emit("enter", {})
+			ya.mgr_emit("enter", {})
 		end
-		ya.manager_emit("yank", { cut = true })
-		ya.manager_emit("paste", { force = mode == "move-force" })
-		ya.manager_emit("unyank", {})
+		ya.mgr_emit("yank", { cut = true })
+		ya.mgr_emit("paste", { force = mode == "move-force" })
+		ya.mgr_emit("unyank", {})
 	elseif mode == "move-new-dir" or mode == "copy-new-dir" then
 		local dir = (is_dir and h.url or h.url:parent()):join(Url("Folder with selected items"))
 		dir = tostring(dir)
@@ -42,42 +43,42 @@ M.on_selection = function(mode)
 			dir,
 			dir
 		)
-		ya.manager_emit("shell", { cmd })
+		ya.mgr_emit("shell", { cmd })
 		return
 	elseif mode == "symlink" or mode == "symlink-force" then
 		if is_dir then
-			ya.manager_emit("enter", {})
+			ya.mgr_emit("enter", {})
 		end
-		ya.manager_emit("yank", {})
-		ya.manager_emit("link", { force = mode == "symlink-force" })
-		ya.manager_emit("unyank", {})
+		ya.mgr_emit("yank", {})
+		ya.mgr_emit("link", { force = mode == "symlink-force" })
+		ya.mgr_emit("unyank", {})
 	elseif mode == "hardlink" or mode == "hardlink-force" then
 		if is_dir then
-			ya.manager_emit("enter", {})
+			ya.mgr_emit("enter", {})
 		end
-		ya.manager_emit("yank", {})
-		ya.manager_emit("hardlink", { follow = true, force = mode == "hardlink-force" })
-		ya.manager_emit("unyank", {})
+		ya.mgr_emit("yank", {})
+		ya.mgr_emit("hardlink", { follow = true, force = mode == "hardlink-force" })
+		ya.mgr_emit("unyank", {})
 		if is_dir then
-			ya.manager_emit("leave", {})
+			ya.mgr_emit("leave", {})
 		end
 	elseif mode == "delete" then
-		ya.manager_emit("remove", {})
+		ya.mgr_emit("remove", {})
 		return
 	elseif mode == "edit" then
 		if os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
-			ya.manager_emit("shell", { 'nvr -cc quit "$@"' })
+			ya.mgr_emit("shell", { 'nvr -cc quit "$@"' })
 		elseif os.getenv("TMUX_POPUP") then
 			local cmd = os.getenv("XDG_CONFIG_HOME") .. "/tmux/scripts/open_in_vim.sh '' \"$@\"; tmux popup -C"
-			ya.manager_emit("shell", { cmd })
+			ya.mgr_emit("shell", { cmd })
 		else
-			ya.manager_emit("open", {})
+			ya.mgr_emit("open", {})
 		end
 		return
 	elseif mode == "rename" then
-		ya.manager_emit("rename", {})
+		ya.mgr_emit("rename", {})
 	elseif mode == "exec" then
-		ya.manager_emit("shell", {
+		ya.mgr_emit("shell", {
 			[=[
 			cache=/tmp/yazi_map_selection;
 			cmd="\n"
@@ -94,7 +95,7 @@ M.on_selection = function(mode)
 			block = true,
 		})
 	end
-	ya.manager_emit("escape", {})
+	ya.mgr_emit("escape", {})
 end
 
 M.smart = function(arg)
@@ -110,9 +111,9 @@ M.smart = function(arg)
 		end
 		if os.getenv("NVIM") and not os.getenv("TMUX_POPUP") and not h.cha.is_dir then
 			if hovered_mime():find("^text/") then
-				ya.manager_emit("shell", { 'nvr -cc quit "$1"' })
+				ya.mgr_emit("shell", { 'nvr -cc quit "$1"' })
 			else
-				ya.manager_emit("open", { hovered = true })
+				ya.mgr_emit("open", { hovered = true })
 			end
 		elseif os.getenv("TMUX_POPUP") then
 			local cmd = 'tmux_run %s "$1"; tmux popup -C'
@@ -121,14 +122,14 @@ M.smart = function(arg)
 			elseif hovered_mime():find("^text/") then
 				cmd = cmd:format("nvim")
 			else
-				ya.manager_emit("open", { hovered = true })
+				ya.mgr_emit("open", { hovered = true })
 				return
 			end
-			ya.manager_emit("shell", { cmd })
+			ya.mgr_emit("shell", { cmd })
 		elseif h.cha.is_dir then
-			ya.manager_emit("shell", { 'cd "$1"; $SHELL -l', block = true })
+			ya.mgr_emit("shell", { 'cd "$1"; $SHELL -l', block = true })
 		else
-			ya.manager_emit("open", { hovered = true })
+			ya.mgr_emit("open", { hovered = true })
 		end
 	elseif arg == "open-neww" then
 		if not os.getenv("TMUX") then
@@ -136,27 +137,27 @@ M.smart = function(arg)
 		end
 		local h = cx.active.current.hovered
 		local cmd = string.format('NEWW=1 tmux_run %s "$1"; tmux popup -C', h.cha.is_dir and "cd" or "nvim")
-		ya.manager_emit("shell", { cmd })
+		ya.mgr_emit("shell", { cmd })
 	elseif arg == "esc" then
 		if #cx.yanked > 0 then
-			ya.manager_emit("unyank", {})
+			ya.mgr_emit("unyank", {})
 		else
-			ya.manager_emit("escape", {})
+			ya.mgr_emit("escape", {})
 		end
 	elseif arg == "up" then
 		local cursor = cx.active.current.cursor
 		if cursor == 0 then
-			ya.manager_emit("arrow", { "bot" })
+			ya.mgr_emit("arrow", { "bot" })
 		else
-			ya.manager_emit("arrow", { -1 })
+			ya.mgr_emit("arrow", { -1 })
 		end
 	elseif arg == "down" then
 		local cursor = cx.active.current.cursor
 		local length = #cx.active.current.files
 		if cursor == length - 1 then
-			ya.manager_emit("arrow", { "top" })
+			ya.mgr_emit("arrow", { "top" })
 		else
-			ya.manager_emit("arrow", { 1 })
+			ya.mgr_emit("arrow", { 1 })
 		end
 	elseif arg == "parent-up" then
 		local parent = cx.active.parent
@@ -165,7 +166,7 @@ M.smart = function(arg)
 		end
 		local target = parent.files[parent.cursor]
 		if target and target.cha.is_dir then
-			ya.manager_emit("cd", { target.url })
+			ya.mgr_emit("cd", { target.url })
 		end
 	elseif arg == "parent-down" then
 		local parent = cx.active.parent
@@ -174,44 +175,44 @@ M.smart = function(arg)
 		end
 		local target = parent.files[parent.cursor + 2]
 		if target and target.cha.is_dir then
-			ya.manager_emit("cd", { target.url })
+			ya.mgr_emit("cd", { target.url })
 		end
 	elseif arg == "N" then
 		local files = cx.active.current.files
 		for i = 1, #files do
 			if files[i]:found() then
-				ya.manager_emit("find_arrow", { previous = true })
+				ya.mgr_emit("find_arrow", { previous = true })
 				return
 			end
 		end
-		ya.manager_emit("create", {})
+		ya.mgr_emit("create", {})
 	elseif arg == "create-tab" then
 		local h = cx.active.current.hovered
-		ya.manager_emit("tab_create", h and h.cha.is_dir and { h.url } or { current = true })
+		ya.mgr_emit("tab_create", h and h.cha.is_dir and { h.url } or { current = true })
 	elseif arg == "next-tab" then
 		if #cx.tabs == 1 then
 			local h = cx.active.current.hovered
-			ya.manager_emit("tab_create", h and h.cha.is_dir and { h.url } or { current = true })
+			ya.mgr_emit("tab_create", h and h.cha.is_dir and { h.url } or { current = true })
 		else
-			ya.manager_emit("tab_switch", { 1, relative = true })
+			ya.mgr_emit("tab_switch", { 1, relative = true })
 		end
 	elseif arg == "split" then
 		local h = cx.active.current.hovered
 		if h.cha.is_dir and os.getenv("TMUX") then
-			ya.manager_emit("shell", { 'tmux splitw -v -c "$1"; tmux popup -C' })
+			ya.mgr_emit("shell", { 'tmux splitw -v -c "$1"; tmux popup -C' })
 		elseif os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
-			ya.manager_emit("shell", { 'nvr -cc quit -cc split "$1"' })
+			ya.mgr_emit("shell", { 'nvr -cc quit -cc split "$1"' })
 		elseif os.getenv("TMUX") then
-			ya.manager_emit("shell", { 'tmux splitw -v "nvim "$1""; tmux popup -C' })
+			ya.mgr_emit("shell", { 'tmux splitw -v "nvim "$1""; tmux popup -C' })
 		end
 	elseif arg == "vsplit" then
 		local h = cx.active.current.hovered
 		if h.cha.is_dir and os.getenv("TMUX") then
-			ya.manager_emit("shell", { 'tmux splitw -h -c "$1"; tmux popup -C' })
+			ya.mgr_emit("shell", { 'tmux splitw -h -c "$1"; tmux popup -C' })
 		elseif os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
-			ya.manager_emit("shell", { 'nvr -cc quit -cc vsplit "$1"' })
+			ya.mgr_emit("shell", { 'nvr -cc quit -cc vsplit "$1"' })
 		elseif os.getenv("TMUX") then
-			ya.manager_emit("shell", { 'tmux splitw -h "nvim "$1""; tmux popup -C' })
+			ya.mgr_emit("shell", { 'tmux splitw -h "nvim "$1""; tmux popup -C' })
 		end
 	end
 end
