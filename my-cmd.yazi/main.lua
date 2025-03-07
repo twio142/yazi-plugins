@@ -9,22 +9,29 @@ local M = {}
 M.on_selection = function(mode)
 	local h = cx.active.current.hovered
 	local is_dir = h and h.cha.is_dir
-	local selected = #cx.active.selected
 	local first
+	for _, url in pairs(cx.active.selected) do
+		first = url:name()
+		break
+	end
+	for _, url in pairs(cx.yanked) do
+		first = first or url:name()
+		ya.mgr_emit("toggle", { url, state = "on" })
+	end
+	ya.mgr_emit("unyank", {})
 	for i = 1, #cx.tabs do
 		for _, url in pairs(cx.tabs[i].selected) do
-			if not first then
-				first = url:name()
-			end
+			first = first or url:name()
 			ya.mgr_emit("toggle", { url, state = "on" })
-			selected = selected + 1
 		end
 	end
-	if selected == 0 then
+	if not first then
 		return
 	end
 	local function locate()
 		ya.mgr_emit("reveal", { (is_dir and h.url or h.url:parent()):join(first) })
+		ya.mgr_emit("unyank", {})
+		ya.mgr_emit("escape", {})
 	end
 	if mode == "copy" or mode == "copy-force" then
 		if is_dir then
@@ -32,7 +39,6 @@ M.on_selection = function(mode)
 		end
 		ya.mgr_emit("yank", {})
 		ya.mgr_emit("paste", { force = mode == "copy-force" })
-		ya.mgr_emit("unyank", {})
 		locate()
 	elseif mode == "move" or mode == "move-force" then
 		ps.sub("move", function(body)
@@ -45,25 +51,24 @@ M.on_selection = function(mode)
 		ya.mgr_emit("yank", { cut = true })
 		ya.mgr_emit("paste", { force = mode == "move-force" })
 		ya.mgr_emit("unyank", {})
+		ya.mgr_emit("escape", {})
 	elseif mode == "move-new-dir" or mode == "copy-new-dir" then
 		local dir = (is_dir and h.url or h.url:parent()):join("Folder with selected items")
 		dir = tostring(dir)
 		local cmd = string.format(
-			[[mkdir -p '%s'; %s "$@" '%s'; ya emit reveal '%s'; ya emit unyank]],
+			[[mkdir -p '%s'; %s "$@" '%s'; ya emit reveal '%s'; ya emit unyank; ya emit escape]],
 			dir,
 			mode == "move-dir" and "mv" or "cp -a",
 			dir,
 			dir
 		)
 		ya.mgr_emit("shell", { cmd })
-		return
 	elseif mode == "symlink" or mode == "symlink-force" then
 		if is_dir then
 			ya.mgr_emit("enter", {})
 		end
 		ya.mgr_emit("yank", {})
 		ya.mgr_emit("link", { force = mode == "symlink-force" })
-		ya.mgr_emit("unyank", {})
 		locate()
 	elseif mode == "hardlink" or mode == "hardlink-force" then
 		if is_dir then
@@ -71,14 +76,12 @@ M.on_selection = function(mode)
 		end
 		ya.mgr_emit("yank", {})
 		ya.mgr_emit("hardlink", { follow = true, force = mode == "hardlink-force" })
-		ya.mgr_emit("unyank", {})
 		if is_dir then
 			ya.mgr_emit("leave", {})
 		end
 		locate()
 	elseif mode == "delete" then
 		ya.mgr_emit("remove", {})
-		return
 	elseif mode == "edit" then
 		if os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
 			ya.mgr_emit("shell", { 'nvr -cc quit "$@"' })
@@ -88,9 +91,9 @@ M.on_selection = function(mode)
 		else
 			ya.mgr_emit("open", {})
 		end
-		return
 	elseif mode == "rename" then
 		ya.mgr_emit("rename", {})
+		ya.mgr_emit("escape", {})
 	elseif mode == "exec" then
 		ya.mgr_emit("shell", {
 			[=[
@@ -108,8 +111,9 @@ M.on_selection = function(mode)
 		]=],
 			block = true,
 		})
+	elseif mode == "sync" then
+		ya.mgr_emit("shell", { 'ya pub-to 0 select --list "$@"' })
 	end
-	ya.mgr_emit("escape", {})
 end
 
 M.smart = function(arg)
@@ -232,6 +236,13 @@ M.smart = function(arg)
 end
 
 return {
+	setup = function()
+		ps.sub_remote("select", function(body)
+			for _, item in ipairs(body) do
+				ya.mgr_emit("toggle", { item, state = "on" })
+			end
+		end)
+	end,
 	entry = function(_, job)
 		local args = job.args
 		local func = M[args[1]]
