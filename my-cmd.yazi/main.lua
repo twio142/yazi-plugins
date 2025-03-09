@@ -119,16 +119,19 @@ end
 M.smart = function(arg)
 	if arg == "enter" then
 		local h = cx.active.current.hovered
-		local function hovered_mime()
+		local function is_code()
 			local files = cx.active.current.files
+			local mime
 			for i = 1, #files do
 				if files[i]:is_hovered() then
-					return files[i]:mime()
+					mime = files[i]:mime()
+					break
 				end
 			end
+			return mime:match("^text/") or mime:match("^application/json")
 		end
 		if os.getenv("NVIM") and not os.getenv("TMUX_POPUP") and not h.cha.is_dir then
-			if hovered_mime():find("^text/") then
+			if is_code() then
 				ya.mgr_emit("shell", { 'nvr -cc quit "$1"' })
 			else
 				ya.mgr_emit("open", { hovered = true })
@@ -137,7 +140,7 @@ M.smart = function(arg)
 			local cmd = 'tmux_run %s "$1"; tmux popup -C'
 			if h.cha.is_dir then
 				cmd = cmd:format("cd")
-			elseif hovered_mime():find("^text/") then
+			elseif is_code() then
 				cmd = cmd:format("nvim")
 			else
 				ya.mgr_emit("open", { hovered = true })
