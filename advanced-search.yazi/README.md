@@ -6,7 +6,7 @@
     - Builtin filter mode, but `close` will close and escape
 - `smart_filter`
     - Continuous filter mode
-- `git_search`
+- `git_changes`
     - Search files with git status (untracked, modified, staged, etc.)
     - Known issue: Can't find empty files.
 

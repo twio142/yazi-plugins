@@ -96,7 +96,7 @@ local get_cwd = ya.sync(function()
 	return tostring(cx.active.current.cwd)
 end)
 
-function M.git_search()
+function M.git_changes()
 	local cwd = get_cwd()
 	local child = Command("git"):args({ "status", "--short" }):cwd(cwd):stdout(Command.PIPED):spawn()
 	local files = {}
@@ -112,6 +112,9 @@ function M.git_search()
 			line = line:match(" -> (.+)$") or line
 		end
 		if not status:find("D") then
+			if line:find("/$") then
+				line = line .. "*"
+			end
 			table.insert(files, line)
 		end
 	end
@@ -122,7 +125,7 @@ function M.git_search()
 		end
 		ya.mgr_emit("search_do", { via = "rg", args = args })
 	else
-		ya.notify({ title = "Git search", content = "No changed files", timeout = 4 })
+		ya.notify({ title = "Git changes", content = "No changed files", timeout = 4 })
 	end
 end
 
