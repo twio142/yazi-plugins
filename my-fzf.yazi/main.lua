@@ -62,8 +62,14 @@ M.fd = function(s)
 		return table.concat(header, " / ")
 	end
 	local _fd = function(k, t)
-		local base = string.format("fd -t%s -H%s --strip-cwd-prefix=always", t, t == 'l' and '' or 'L')
-		return string.format("%s:reload([ $FZF_PROMPT = '> ' ] && %s || %s --no-ignore-vcs)+change-header( %s )", k, base, base, _hd(t))
+		local base = string.format("fd -t%s -H%s --strip-cwd-prefix=always", t, t == "l" and "" or "L")
+		return string.format(
+			"%s:reload([ $FZF_PROMPT = '> ' ] && %s || %s --no-ignore-vcs)+change-header( %s )",
+			k,
+			base,
+			base,
+			_hd(t)
+		)
 	end
 	local child = Command("fzf")
 		:args({ "--preview", "fzf-preview {}", "--preview-window=up,60%", "-m" })
@@ -73,7 +79,11 @@ M.fd = function(s)
 		:args({ "--bind", _fd("alt-s", "s") })
 		:args({ "--bind", _fd("alt-f", "f") })
 		:args({ "--bind", _fd("alt-x", "x") })
-		:args({ "--bind", "alt-i:clear-query+transform-prompt( [ $FZF_PROMPT = '> ' ] && echo ' > ' || echo '> ' )+" .. _fd("", "f"):sub(2, -1) })
+		:args({
+			"--bind",
+			"alt-i:clear-query+transform-prompt( [ $FZF_PROMPT = '> ' ] && echo ' > ' || echo '> ' )+"
+				.. _fd("", "f"):sub(2, -1),
+		})
 		:cwd(cwd)
 		:stdout(Command.PIPED)
 		:spawn()
@@ -108,44 +118,24 @@ M.fif = function(s)
 	ya.hide()
 	local child = Command("fif"):args({ "-o" }):cwd(cwd):stdout(Command.PIPED):spawn()
 	local files = {}
-	local ln
 	while true do
 		local line, event = child:read_line()
 		if event ~= 0 then
 			break
 		end
 		local file = line:match("^[^:\n]+")
-		ln = line:match("^[^:]+:(%d+)")
 		table.insert(files, file)
 	end
-	if #files == 0 then
-		return
-	end
-	if os.getenv("TMUX_POPUP") then
-		if #files == 1 then
-			ya.mgr_emit("reveal", { files[1] })
-		else
-			local last_file
-			for _, file in ipairs(files) do
-				file = tostring(Url(cwd):join(Url(file)))
-				ya.mgr_emit("toggle", { file, state = "on" })
-				last_file = file
-			end
-			ya.mgr_emit("reveal", { last_file })
+	if #files == 1 then
+		ya.mgr_emit("reveal", { files[1] })
+	elseif #files > 1 then
+		local last_file
+		for _, file in ipairs(files) do
+			file = tostring(Url(cwd):join(Url(file)))
+			ya.mgr_emit("toggle", { file, state = "on" })
+			last_file = file
 		end
-	else
-		local args = ""
-		if #files == 1 then
-			args = args .. ya.quote(files[1])
-			if ln then
-				args = args .. " +" .. ln
-			end
-		else
-			for _, file in ipairs(files) do
-				args = args .. ya.quote(file) .. " "
-			end
-		end
-		ya.mgr_emit("shell", { "nvim " .. args, block = true })
+		ya.mgr_emit("reveal", { last_file })
 	end
 end
 
@@ -189,43 +179,23 @@ M.obsearch = function()
 	ya.hide()
 	local child = Command("obsearch"):args({ "-o" }):stdout(Command.PIPED):spawn()
 	local files = {}
-	local ln
 	while true do
 		local line, event = child:read_line()
 		if event ~= 0 then
 			break
 		end
 		local file = line:match("^[^:\n]+")
-		ln = line:match("^[^:]+:(%d+)")
 		table.insert(files, file)
 	end
-	if #files == 0 then
-		return
-	end
-	if os.getenv("TMUX_POPUP") then
-		if #files == 1 then
-			ya.mgr_emit("reveal", { files[1] })
-		else
-			local last_file
-			for _, file in ipairs(files) do
-				ya.mgr_emit("toggle", { file, state = "on" })
-				last_file = file
-			end
-			ya.mgr_emit("reveal", { last_file })
+	if #files == 1 then
+		ya.mgr_emit("reveal", { files[1] })
+	elseif #files > 1 then
+		local last_file
+		for _, file in ipairs(files) do
+			ya.mgr_emit("toggle", { file, state = "on" })
+			last_file = file
 		end
-	else
-		local args = ""
-		if #files == 1 then
-			args = args .. ya.quote(files[1])
-			if ln then
-				args = args .. " +" .. ln
-			end
-		else
-			for _, file in ipairs(files) do
-				args = args .. ya.quote(file) .. " "
-			end
-		end
-		ya.mgr_emit("shell", { "nvim " .. args, block = true })
+		ya.mgr_emit("reveal", { last_file })
 	end
 end
 
@@ -235,7 +205,7 @@ M.selected = function(s)
 		return
 	end
 	ya.hide()
-	local tmpfile = Command("mktemp"):args({ "/tmp/yazi.XXXXXX" }):stdout(Command.PIPED):output().stdout:gsub("\n", "")
+	local tmpfile = "/tmp/yazi_selection"
 	ya.mgr_emit("shell", { [[printf '%s\n' "$@" > ]] .. tmpfile })
 	local output = Command("fzf")
 		:args({ "--preview", "fzf-preview {}", "--preview-window", "up,60%" })
@@ -254,7 +224,6 @@ M.selected = function(s)
 	if file ~= "" then
 		ya.mgr_emit("reveal", { file })
 	end
-	ya.mgr_emit("shell", { "rm " .. tmpfile })
 end
 
 local state = ya.sync(function()
