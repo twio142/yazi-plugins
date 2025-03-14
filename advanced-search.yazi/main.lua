@@ -112,6 +112,9 @@ function M.git_changes()
 			line = line:match(" -> (.+)$") or line
 		end
 		if not status:find("D") then
+			if line:find([[^"(.+)"$]]) then
+				line = line:match([[^"(.+)"$]]):gsub('\\"', '"')
+			end
 			if line:find("/$") then
 				line = line .. "*"
 			end
