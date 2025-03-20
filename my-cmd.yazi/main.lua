@@ -111,6 +111,14 @@ M.on_selection = function(mode)
 		]=],
 			block = true,
 		})
+	elseif mode == "enter" then
+    if os.getenv("TMUX_POPUP") then
+      ya.mgr_emit("shell", { 'tmux_edit "$@"; tmux popup -C' })
+    elseif os.getenv("NVIM") then
+			ya.mgr_emit("shell", { 'nvr -cc quit "$@"' })
+		else
+			ya.mgr_emit("shell", { 'nvim "$@"', block = true })
+		end
 	elseif mode == "sync" then
 		ya.mgr_emit("shell", { 'ya pub-to 0 select --list "$@"' })
 	end
