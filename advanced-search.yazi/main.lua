@@ -1,4 +1,5 @@
---- @since 25.2.26
+---@diagnostic disable: undefined-global
+--- @since 25.3.7
 local M = {}
 
 local function prompt(title)
@@ -88,12 +89,16 @@ function M.smart_filter()
 end
 
 local get_cwd = ya.sync(function()
-	return tostring(cx.active.current.cwd)
+	return cx.active.current.cwd
 end)
 
 function M.git_changes()
 	local cwd = get_cwd()
-	local child = Command("git"):args({ "status", "--short" }):cwd(cwd):stdout(Command.PIPED):spawn()
+	local child = Command("git")
+		:args({ "--no-optional-locks", "-c", "core.quotePath=", "status", "--porcelain", "-uall", "--no-renames" })
+		:cwd(tostring(cwd))
+		:stdout(Command.PIPED)
+		:spawn()
 	local files = {}
 	while true do
 		local line, event = child:read_line()
@@ -102,26 +107,19 @@ function M.git_changes()
 		end
 		line = line:gsub("\n", "")
 		local status = line:sub(1, 2)
-		line = line:sub(4)
-		if status == "R " then
-			line = line:match(" -> (.+)$") or line
-		end
 		if not status:find("D") then
-			if line:find([[^"(.+)"$]]) then
-				line = line:match([[^"(.+)"$]]):gsub('\\"', '"')
-			end
-			if line:find("/$") then
-				line = line .. "*"
-			end
-			table.insert(files, line)
+			local url = cwd:join(line:sub(4))
+			local cha = fs.cha(url)
+			table.insert(files, File({ url = url, cha = cha }))
 		end
 	end
 	if #files > 0 then
-		local args = "-l -a ."
-		for _, file in ipairs(files) do
-			args = args .. string.format(' -g "%s"', file)
-		end
-		ya.mgr_emit("search_do", { via = "rg", args = args })
+		local id = ya.id("ft")
+		cwd = cwd:into_search("Git changes")
+		ya.mgr_emit("cd", { Url(cwd) })
+		ya.mgr_emit("update_files", { op = fs.op("part", { id = id, url = Url(cwd), files = {} }) })
+		ya.mgr_emit("update_files", { op = fs.op("part", { id = id, url = Url(cwd), files = files }) })
+		ya.mgr_emit("update_files", { op = fs.op("done", { id = id, url = cwd, cha = Cha({ kind = 16 }) }) })
 	else
 		ya.notify({ title = "Git changes", content = "No changed files", timeout = 4 })
 	end

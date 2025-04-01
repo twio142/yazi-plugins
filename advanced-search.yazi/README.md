@@ -8,7 +8,6 @@
     - Continuous filter mode
 - `git_changes`
     - Search files with git status (untracked, modified, staged, etc.)
-    - Known issue: Can't find empty files.
 
 ## Usage
 
