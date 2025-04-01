@@ -205,17 +205,13 @@ M.selected = function(s)
 		return
 	end
 	ya.hide()
-	local tmpfile = "/tmp/yazi_selection"
-	ya.mgr_emit("shell", { [[printf '%s\n' "$@" > ]] .. tmpfile })
+  local cmd = [[ya emit shell 'printf "%s\n" "$@" > /tmp/yazi_selection' && sleep 0.1 && cat /tmp/yazi_selection]]
 	local output = Command("fzf")
 		:args({ "--preview", "fzf-preview {}", "--preview-window", "up,60%" })
-		:args({ "--bind", "start:reload:cat " .. tmpfile })
+		:args({ "--bind", "start:reload:" .. cmd })
 		:args({
 			"--bind",
-			[[ctrl-x:reload:ya emit toggle {} --state=off && ya emit shell 'printf "%s\n" "$@" > ]]
-				.. tmpfile
-				.. "' && sleep 0.1 && cat "
-				.. tmpfile,
+			"ctrl-x:reload:ya emit toggle {} --state=off && " .. cmd,
 		})
 		:args({ "--header", "\x1b[1;36m⌃X\x1b[0m Deselect" })
 		:stdout(Command.PIPED)
