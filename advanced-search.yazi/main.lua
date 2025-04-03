@@ -1,13 +1,17 @@
 --- @since 25.2.26
 local M = {}
 
-function M.find()
-	local input = ya.input({
-		title = "Find next:",
-		position = { "hovered", w = 50, x = 13 },
+local function prompt(title)
+	return ya.input({
+		title = title .. ":",
+		position = { "hovered", w = 50, x = 13, y = 1 },
 		realtime = true,
 		debounce = 0.1,
 	})
+end
+
+function M.find()
+	local input = prompt("Find next")
 
 	while true do
 		local value, event = input:recv()
@@ -37,17 +41,8 @@ local hovered = ya.sync(function()
 	}
 end)
 
-local function prompt(title)
-	return ya.input({
-		title = title,
-		position = { "hovered", w = 50, x = 13 },
-		realtime = true,
-		debounce = 0.1,
-	})
-end
-
 function M.filter()
-	local input = prompt("Filter:")
+	local input = prompt("Filter")
 
 	while true do
 		local value, event = input:recv()
@@ -69,7 +64,7 @@ function M.filter()
 end
 
 function M.smart_filter()
-	local input = prompt("Smart filter:")
+	local input = prompt("Smart filter")
 
 	while true do
 		local value, event = input:recv()
