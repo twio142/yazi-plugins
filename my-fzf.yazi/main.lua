@@ -1,20 +1,35 @@
 --- @since 25.2.26
 --- @diagnostic disable: undefined-global
-_G.ya = _G.ya or {}
-_G.cx = _G.cx or {}
-_G.Command = _G.Command or {}
 
 local M = {}
+local BOLD = "\x1b[1;36m"
+local OFF = "\x1b[0m"
 
 M.z = function(s)
 	local cwd = s.cwd
-	ya.hide()
+	if not s.query then
+		ya.hide()
+	end
 	local _z = ":reload:zoxide query {q} -l --exclude $PWD || true"
+	local keys = {
+		F = "Search files",
+		G = "Grep",
+		T = "Open in a new tab",
+	}
+	local header = ""
+	for k, v in pairs(keys) do
+		local h = string.format("%s⌃%s%s %s", BOLD, k, OFF, v)
+		header = header .. h .. " / "
+	end
+	header = header:sub(1, -4)
 	local child = Command("fzf")
+		:args({ "--query", s.query or "" })
 		:args({ "--bind", "start" .. _z })
 		:args({ "--bind", "change" .. _z })
+		:args({ "--bind", "ctrl-f:become(echo 'file\n{}\n{q}')" })
+		:args({ "--bind", "ctrl-g:become(echo 'grep\n{}\n{q}')" })
 		:args({ "--bind", "ctrl-t:print(tab)+accept" })
-		:args({ "--header", "\x1b[1;36m⌃T\x1b[0m Open in a new tab" })
+		:args({ "--header", header })
 		:args({ "--disabled", "--preview-window=up,60%" })
 		:args({ "--preview", "fzf-preview {}" })
 		:cwd(cwd)
@@ -34,6 +49,10 @@ M.z = function(s)
 	end
 	if #lines == 1 then
 		ya.mgr_emit("cd", { lines[1] })
+	elseif lines[1] == "file" then
+		M.fd({ cwd = lines[2], query = lines[3] })
+	elseif lines[1] == "grep" then
+		M.fif({ cwd = lines[2], query = lines[3] })
 	elseif lines[1] == "tab" then
 		ya.mgr_emit("tab_create", { lines[2] })
 	end
@@ -41,7 +60,9 @@ end
 
 M.fd = function(s)
 	local cwd = s.cwd
-	ya.hide()
+	if not s.query then
+		ya.hide()
+	end
 	local _hd = function(t)
 		local types = {
 			f = "file",
@@ -51,8 +72,6 @@ M.fd = function(s)
 			x = "executable",
 		}
 		local header = {}
-		local BOLD = "\x1b[1;36m"
-		local OFF = "\x1b[0m"
 		for k, v in pairs(types) do
 			local h = t == k and BOLD or ""
 			h = h .. string.format("⌥%s %s", string.upper(k), v)
@@ -84,6 +103,7 @@ M.fd = function(s)
 			"alt-i:clear-query+transform-prompt( [ $FZF_PROMPT = '> ' ] && echo ' > ' || echo '> ' )+"
 				.. _fd("", "f"):sub(2, -1),
 		})
+		:args({ "--bind", "ctrl-b:print(back)+accept" })
 		:cwd(cwd)
 		:stdout(Command.PIPED)
 		:spawn()
@@ -97,15 +117,20 @@ M.fd = function(s)
 		table.insert(files, file)
 	end
 	if #files == 1 then
-		local cha, err = fs.cha(Url(cwd):join(Url(files[1])), true)
+		local file = Url(cwd):join(files[1])
+		local cha, err = fs.cha(file, true)
 		if err then
 			return
 		end
-		ya.mgr_emit(cha.is_dir and "cd" or "reveal", { files[1] })
+		ya.mgr_emit(cha.is_dir and "cd" or "reveal", { file })
 	elseif #files > 1 then
+		if files[1] == "back" then
+			M.z({ cwd = os.getenv("PWD"), query = s.query })
+			return
+		end
 		local last_file
 		for _, file in ipairs(files) do
-			file = tostring(Url(cwd):join(Url(file)))
+			file = Url(cwd):join(file)
 			ya.mgr_emit("toggle", { file, state = "on" })
 			last_file = file
 		end
@@ -115,8 +140,27 @@ end
 
 M.fif = function(s)
 	local cwd = s.cwd
-	ya.hide()
-	local child = Command("fif"):args({ "-o" }):cwd(cwd):stdout(Command.PIPED):spawn()
+	if not s.query then
+		ya.hide()
+	end
+	local fd_prefix = "fd -H -L -tf -p "
+	local fd_suffix = ". -X ls -t | sed 's/^\\.\\//\x1b[35m/' | sed 's/\\$/\x1b[0m/'"
+	local rg = "rg --ignore-vcs -. -L -S -n --column --no-heading --color=always"
+	local child = Command("fzf")
+		:args({ "--ansi", "--disabled", "-m" })
+		:args({ "--color", "hl:-1:underline,hl+:-1:underline:reverse" })
+		:args({ "--bind", "start:reload:" .. fd_prefix .. " . " .. fd_suffix })
+		:args({
+			"--bind",
+			"change:reload:sleep 0.1; " .. fd_prefix .. " {q} " .. fd_suffix .. " || true; " .. rg .. " {q} || true",
+		})
+		:args({ "--bind", "ctrl-b:print(back)+accept" })
+		:args({ "--delimiter", ":" })
+		:args({ "--preview", "[ -z {2} ] && fzf-preview {} || bat --color=always {1} --highlight-line {2}" })
+		:args({ "--preview-window", "up,60%,border-bottom,+{2}+3/3,~3" })
+		:cwd(cwd)
+		:stdout(Command.PIPED)
+		:spawn()
 	local files = {}
 	while true do
 		local line, event = child:read_line()
@@ -127,11 +171,16 @@ M.fif = function(s)
 		table.insert(files, file)
 	end
 	if #files == 1 then
-		ya.mgr_emit("reveal", { files[1] })
+		local file = Url(cwd):join(files[1])
+		ya.mgr_emit("reveal", { file })
 	elseif #files > 1 then
+		if files[1] == "back" then
+			M.z({ cwd = os.getenv("PWD"), query = s.query })
+			return
+		end
 		local last_file
 		for _, file in ipairs(files) do
-			file = tostring(Url(cwd):join(Url(file)))
+			file = Url(cwd):join(file)
 			ya.mgr_emit("toggle", { file, state = "on" })
 			last_file = file
 		end
@@ -200,12 +249,11 @@ M.obsearch = function()
 end
 
 M.selected = function(s)
-	local selected = s.selected
-	if #selected == 0 then
+	if s.selected_count == 0 then
 		return
 	end
 	ya.hide()
-  local cmd = [[ya emit shell 'printf "%s\n" "$@" > /tmp/yazi_selection' && sleep 0.1 && cat /tmp/yazi_selection]]
+	local cmd = [[ya emit shell 'printf "%s\n" "$@" > /tmp/yazi_selection' && sleep 0.1 && cat /tmp/yazi_selection]]
 	local output = Command("fzf")
 		:args({ "--preview", "fzf-preview {}", "--preview-window", "up,60%" })
 		:args({ "--bind", "start:reload:" .. cmd })
@@ -213,7 +261,7 @@ M.selected = function(s)
 			"--bind",
 			"ctrl-x:reload:ya emit toggle {} --state=off && " .. cmd,
 		})
-		:args({ "--header", "\x1b[1;36m⌃X\x1b[0m Deselect" })
+		:args({ "--header", ("%s⌃X%s Deselect"):format(BOLD, OFF) })
 		:stdout(Command.PIPED)
 		:output()
 	local file = output.stdout:gsub("\n", "")
@@ -223,13 +271,9 @@ M.selected = function(s)
 end
 
 local state = ya.sync(function()
-	local selected = {}
-	for _, url in pairs(cx.active.selected) do
-		table.insert(selected, tostring(url))
-	end
 	return {
 		cwd = tostring(cx.active.current.cwd),
-		selected = selected,
+		selected_count = #cx.active.selected,
 	}
 end)
 

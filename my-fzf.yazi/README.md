@@ -2,7 +2,7 @@
 
 - `z`: zoxide
 - `fd`: fd-find
-- `fif`: rg-find-in-file
-- `git`: recent git repos
+- `fif`: rg-find-in-files
+- `git`: recent git repos (using lazygit cache)
 - `obsearch`: search in obsidian vault
 - `selected`: selected files in yazi
