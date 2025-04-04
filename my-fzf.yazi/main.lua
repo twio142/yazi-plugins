@@ -249,31 +249,63 @@ M.obsearch = function()
 end
 
 M.selected = function(s)
-	if s.selected_count == 0 then
+	if #s.selected == 0 then
 		return
 	end
-	ya.hide()
-	local cmd = [[ya emit shell 'printf "%s\n" "$@" > /tmp/yazi_selection' && sleep 0.1 && cat /tmp/yazi_selection]]
-	local output = Command("fzf")
-		:args({ "--preview", "fzf-preview {}", "--preview-window", "up,60%" })
-		:args({ "--bind", "start:reload:" .. cmd })
-		:args({
-			"--bind",
-			"ctrl-x:reload:ya emit toggle {} --state=off && " .. cmd,
-		})
+	if not s.map then
+		ya.hide()
+		s.map = {}
+		for _, path in pairs(s.selected) do
+			s.map[path] = true
+		end
+	end
+	local child = Command("fzf")
+		:args({ "-m", "--preview", "fzf-preview {}", "--preview-window", "up,60%" })
+		:args({ "--bind", "ctrl-x:print(deselect)+accept" })
 		:args({ "--header", ("%s⌃X%s Deselect"):format(BOLD, OFF) })
+		:stdin(Command.PIPED)
 		:stdout(Command.PIPED)
-		:output()
-	local file = output.stdout:gsub("\n", "")
-	if file ~= "" then
-		ya.mgr_emit("reveal", { file })
+		:spawn()
+	child:write_all(table.concat(s.selected, "\n"))
+	child:flush()
+	child:wait()
+	local lines = {}
+	while true do
+		local line, event = child:read_line()
+		if event ~= 0 then
+			break
+		end
+		line = line:gsub("\n", "")
+		table.insert(lines, line)
+	end
+	if #lines == 0 then
+		return
+	end
+	if lines[1] == "deselect" then
+		for i = 2, #lines do
+			ya.mgr_emit("toggle", { lines[i], state = "off" })
+			s.map[lines[i]] = false
+		end
+		s.selected = {}
+		for path, ok in pairs(s.map) do
+			if ok then
+				table.insert(s.selected, path)
+			end
+		end
+		M.selected(s)
+	else
+		ya.mgr_emit("reveal", { lines[1] })
 	end
 end
 
 local state = ya.sync(function()
+	local selected = {}
+	for _, url in pairs(cx.active.selected) do
+		table.insert(selected, tostring(url))
+	end
 	return {
 		cwd = tostring(cx.active.current.cwd),
-		selected_count = #cx.active.selected,
+		selected = selected,
 	}
 end)
 
