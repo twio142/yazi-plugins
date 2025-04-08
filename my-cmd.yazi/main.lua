@@ -11,17 +11,17 @@ M.on_selection = function(mode)
 	local is_dir = h and h.cha.is_dir
 	local first
 	for _, url in pairs(cx.active.selected) do
-		first = url:name()
+		first = url.name
 		break
 	end
 	for _, url in pairs(cx.yanked) do
-		first = first or url:name()
+		first = first or url.name
 		ya.mgr_emit("toggle", { url, state = "on" })
 	end
 	ya.mgr_emit("unyank", {})
 	for i = 1, #cx.tabs do
 		for _, url in pairs(cx.tabs[i].selected) do
-			first = first or url:name()
+			first = first or url.name
 			ya.mgr_emit("toggle", { url, state = "on" })
 		end
 	end
@@ -29,7 +29,7 @@ M.on_selection = function(mode)
 		return
 	end
 	local function locate()
-		ya.mgr_emit("reveal", { (is_dir and h.url or h.url:parent()):join(first) })
+		ya.mgr_emit("reveal", { (is_dir and h.url or h.url.parent):join(first) })
 		ya.mgr_emit("unyank", {})
 		ya.mgr_emit("escape", {})
 	end
@@ -53,7 +53,7 @@ M.on_selection = function(mode)
 		ya.mgr_emit("unyank", {})
 		ya.mgr_emit("escape", {})
 	elseif mode == "move-new-dir" or mode == "copy-new-dir" then
-		local dir = (is_dir and h.url or h.url:parent()):join("Folder with selected items")
+		local dir = (is_dir and h.url or h.url.parent):join("Folder with selected items")
 		dir = tostring(dir)
 		local cmd = string.format(
 			[[mkdir -p '%s'; %s "$@" '%s'; ya emit reveal '%s'; ya emit unyank; ya emit escape]],
@@ -112,9 +112,9 @@ M.on_selection = function(mode)
 			block = true,
 		})
 	elseif mode == "enter" then
-    if os.getenv("TMUX_POPUP") then
-      ya.mgr_emit("shell", { 'tmux_edit "$@"; tmux popup -C' })
-    elseif os.getenv("NVIM") then
+		if os.getenv("TMUX_POPUP") then
+			ya.mgr_emit("shell", { 'tmux_edit "$@"; tmux popup -C' })
+		elseif os.getenv("NVIM") then
 			ya.mgr_emit("shell", { 'nvr -cc quit "$@"' })
 		else
 			ya.mgr_emit("shell", { 'nvim "$@"', block = true })
@@ -131,7 +131,7 @@ M.smart = function(arg)
 			local files = cx.active.current.files
 			local mime
 			for i = 1, #files do
-				if files[i]:is_hovered() then
+				if files[i].is_hovered then
 					mime = files[i]:mime()
 					break
 				end
@@ -172,21 +172,6 @@ M.smart = function(arg)
 			ya.mgr_emit("unyank", {})
 		else
 			ya.mgr_emit("escape", {})
-		end
-	elseif arg == "up" then
-		local cursor = cx.active.current.cursor
-		if cursor == 0 then
-			ya.mgr_emit("arrow", { "bot" })
-		else
-			ya.mgr_emit("arrow", { -1 })
-		end
-	elseif arg == "down" then
-		local cursor = cx.active.current.cursor
-		local length = #cx.active.current.files
-		if cursor == length - 1 then
-			ya.mgr_emit("arrow", { "top" })
-		else
-			ya.mgr_emit("arrow", { 1 })
 		end
 	elseif arg == "parent-up" then
 		local parent = cx.active.parent
