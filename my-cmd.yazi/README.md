@@ -19,8 +19,8 @@
     - `move` / `move-force`: move selected files to the hovered path
     - `copy-new-dir`: copy selected files to a new directory in the hovered path
     - `move-new-dir`: move selected files to a new directory in the hovered path
-    - `symlink` / `symlink-force`: create symlinks to selected files in the hovered path
-    - `hardlink` / `hardlink-force`: create hardlinks to selected files in the hovered path
+    - `symlink` / `relative-symlink` / `symlink-force` / `relative-symlink-force`: create symlinks to selected files in the hovered path
+    - `hardlink` / `relative-hardlink` / `hardlink-force` / `relative-hardlink-force`: create hardlinks to selected files in the hovered path
     - `delete`: delete selected files
     - `edit`: open selected files in editor
     - `rename`: rename selected files

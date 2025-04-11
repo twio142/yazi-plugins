@@ -38,7 +38,7 @@ M.on_selection = function(mode)
 			ya.mgr_emit("enter", {})
 		end
 		ya.mgr_emit("yank", {})
-		ya.mgr_emit("paste", { force = mode == "copy-force" })
+		ya.mgr_emit("paste", { force = mode:match("force") and true or false })
 		locate()
 	elseif mode == "move" or mode == "move-force" then
 		ps.sub("move", function(body)
@@ -49,36 +49,26 @@ M.on_selection = function(mode)
 			ya.mgr_emit("enter", {})
 		end
 		ya.mgr_emit("yank", { cut = true })
-		ya.mgr_emit("paste", { force = mode == "move-force" })
+		ya.mgr_emit("paste", { force = mode:match("force") and true or false })
 		ya.mgr_emit("unyank", {})
 		ya.mgr_emit("escape", {})
-	elseif mode == "move-new-dir" or mode == "copy-new-dir" then
+	elseif mode:match("new-dir") then
 		local dir = (is_dir and h.url or h.url.parent):join("Folder with selected items")
 		dir = tostring(dir)
 		local cmd = string.format(
 			[[mkdir -p '%s'; %s "$@" '%s'; ya emit reveal '%s'; ya emit unyank; ya emit escape]],
 			dir,
-			mode == "move-dir" and "mv" or "cp -a",
+			mode:match("move") and "mv" or "cp -a",
 			dir,
 			dir
 		)
 		ya.mgr_emit("shell", { cmd })
-	elseif mode == "symlink" or mode == "symlink-force" then
+	elseif mode:match("link") then
 		if is_dir then
 			ya.mgr_emit("enter", {})
 		end
 		ya.mgr_emit("yank", {})
-		ya.mgr_emit("link", { force = mode == "symlink-force" })
-		locate()
-	elseif mode == "hardlink" or mode == "hardlink-force" then
-		if is_dir then
-			ya.mgr_emit("enter", {})
-		end
-		ya.mgr_emit("yank", {})
-		ya.mgr_emit("hardlink", { follow = true, force = mode == "hardlink-force" })
-		if is_dir then
-			ya.mgr_emit("leave", {})
-		end
+		ya.mgr_emit(mode:match("symlink") and "link" or "hardlink", { force = mode:match("force") and true or false, relative = mode:match("relative") and true or false, follow = true })
 		locate()
 	elseif mode == "delete" then
 		ya.mgr_emit("remove", {})
