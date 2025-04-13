@@ -68,7 +68,14 @@ M.on_selection = function(mode)
 			ya.mgr_emit("enter", {})
 		end
 		ya.mgr_emit("yank", {})
-		ya.mgr_emit(mode:match("symlink") and "link" or "hardlink", { force = mode:match("force") and true or false, relative = mode:match("relative") and true or false, follow = true })
+		ya.mgr_emit(
+			mode:match("symlink") and "link" or "hardlink",
+			{
+				force = mode:match("force") and true or false,
+				relative = mode:match("relative") and true or false,
+				follow = true,
+			}
+		)
 		locate()
 	elseif mode == "delete" then
 		ya.mgr_emit("remove", {})
@@ -76,7 +83,7 @@ M.on_selection = function(mode)
 		if os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
 			ya.mgr_emit("shell", { 'nvr -cc quit "$@"' })
 		elseif os.getenv("TMUX_POPUP") then
-			local cmd = os.getenv("XDG_CONFIG_HOME") .. "/tmux/scripts/open_in_vim.sh '' \"$@\"; tmux popup -C"
+			local cmd = 'tmux-edit "$@"; tmux popup -C'
 			ya.mgr_emit("shell", { cmd })
 		else
 			ya.mgr_emit("open", {})
@@ -103,7 +110,7 @@ M.on_selection = function(mode)
 		})
 	elseif mode == "enter" then
 		if os.getenv("TMUX_POPUP") then
-			ya.mgr_emit("shell", { 'tmux_edit "$@"; tmux popup -C' })
+			ya.mgr_emit("shell", { 'tmux-edit "$@"; tmux popup -C' })
 		elseif os.getenv("NVIM") then
 			ya.mgr_emit("shell", { 'nvr -cc quit "$@"' })
 		else
@@ -135,7 +142,7 @@ M.smart = function(arg)
 				ya.mgr_emit("open", { hovered = true })
 			end
 		elseif os.getenv("TMUX_POPUP") then
-			local cmd = 'tmux_run %s "$1"; tmux popup -C'
+			local cmd = 'tmux-run %s "$1"; tmux popup -C'
 			if h.cha.is_dir then
 				cmd = cmd:format("cd")
 			elseif is_code() then
@@ -155,7 +162,7 @@ M.smart = function(arg)
 			return
 		end
 		local h = cx.active.current.hovered
-		local cmd = string.format('NEWW=1 tmux_run %s "$1"; tmux popup -C', h.cha.is_dir and "cd" or "nvim")
+		local cmd = string.format('NEWW=1 tmux-run %s "$1"; tmux popup -C', h.cha.is_dir and "cd" or "nvim")
 		ya.mgr_emit("shell", { cmd })
 	elseif arg == "esc" then
 		if #cx.yanked > 0 then
