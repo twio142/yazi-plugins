@@ -196,6 +196,10 @@ M.smart = function(arg)
 				return
 			end
 		end
+		local h = cx.active.current.hovered
+		if h.cha.is_dir  then
+			ya.mgr_emit("enter", {})
+		end
 		ya.mgr_emit("create", {})
 	elseif arg == "create-tab" then
 		local h = cx.active.current.hovered
