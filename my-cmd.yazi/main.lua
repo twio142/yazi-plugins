@@ -52,7 +52,7 @@ M.on_selection = function(mode)
 		ya.mgr_emit("paste", { force = mode:match("force") and true or false })
 		ya.mgr_emit("unyank", {})
 		ya.mgr_emit("escape", {})
-	elseif mode:match("new-dir") then
+	elseif mode:match("new%-dir") then
 		local dir = (is_dir and h.url or h.url.parent):join("Folder with selected items")
 		dir = tostring(dir)
 		local cmd = string.format(
