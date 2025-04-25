@@ -238,7 +238,7 @@ return {
 
 			if this.cwd ~= cwd then
 				this.cwd = cwd
-				ya.manager_emit("plugin", {
+				ya.mgr_emit("plugin", {
 					this._id,
 					ya.quote(tostring(cwd), true),
 				})
