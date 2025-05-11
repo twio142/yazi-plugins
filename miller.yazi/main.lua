@@ -8,14 +8,14 @@ ss=(, ";" "|", "	")
 vs=("${ss[@]}")
 read -r fl < "$file"
 while IFS= read -r l; do
-    nvs=()
-    for s in "${vs[@]}"; do
-        fc=$(echo "$fl" | grep -o "$s" | wc -l)
-        cc=$(echo "$l" | grep -o "$s" | wc -l)
-        [[ "$fc" -eq "$cc" && "$cc" -gt 0 ]] && nvs+=("$s")
-    done
-    vs=("${nvs[@]}")
-    [[ ${#vs[@]} -eq 1 ]] && break
+	nvs=()
+	for s in "${vs[@]}"; do
+		fc=$(echo "$fl" | grep -o "$s" | wc -l)
+		cc=$(echo "$l" | grep -o "$s" | wc -l)
+		[[ "$fc" -eq "$cc" && "$cc" -gt 0 ]] && nvs+=("$s")
+	done
+	vs=("${nvs[@]}")
+	[[ ${#vs[@]} -eq 1 ]] && break
 done < "$file"
 printf "${vs[0]}"
 	]=]
@@ -46,14 +46,14 @@ function M:peek(job)
 	end
 	table.insert(args, "cat")
 	table.insert(args, tostring(job.file.url))
-	local child = Command("mlr"):args(args):stdout(Command.PIPED):stderr(Command.PIPED):spawn()
+	local child = Command("mlr"):args(args):stdout(Command.PIPED):spawn()
 
 	local limit = job.area.h
 	local i, lines = 0, ""
 	repeat
 		local line, event = child:read_line()
 		if event == 1 then
-			ya.err(tostring(event))
+			ya.dbg(tostring(event))
 		elseif event ~= 0 then
 			break
 		end
@@ -66,35 +66,25 @@ function M:peek(job)
 
 	child:start_kill()
 	if job.skip > 0 and i < job.skip + limit then
-		ya.mgr_emit(
-			"peek",
-			{ tostring(math.max(0, i - limit)), only_if = tostring(job.file.url), upper_bound = "" }
-		)
+		ya.mgr_emit("peek", { math.max(0, i - limit), only_if = job.file.url, upper_bound = true })
 	else
-		lines = lines:gsub("\t", string.rep(" ", PREVIEW.tab_size))
+		lines = lines:gsub("\t", string.rep(" ", rt.preview.tab_size))
 		ya.preview_widgets(job, { ui.Text(lines):area(job.area) })
 	end
 end
 
 function M:seek(job)
-	local h = cx.active.current.hovered
-	if h and h.url == job.file.url then
-		local step = math.floor(job.units * job.area.h / 10)
-		ya.mgr_emit("peek", {
-			tostring(math.max(0, cx.active.preview.skip + step)),
-			only_if = tostring(job.file.url),
-		})
-	end
+	require("code").seek(job)
 end
 
 function M.setup(_, opts)
 	for k, v in pairs(opts) do
 		if k:find("-") == 1 and (type(v) == "boolean" or type(v) == "string" or type(v) == "function") then
-      if v == false then
-        M.opts[k] = nil
-      else
-        M.opts[k] = v
-      end
+			if v == false then
+				M.opts[k] = nil
+			else
+				M.opts[k] = v
+			end
 		end
 	end
 end
