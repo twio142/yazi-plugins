@@ -8,7 +8,6 @@
     - `esc`: unyank / escape
     - `up` / `down`: rotate when hitting top / bottom
     - `parent-up` / `parent-down`: Go up / down in the parent directory
-    - `N`: find previous / create new file
     - `create-tab`: create a tab on the hovered file, enter if hovered on a directory
     - `next-tab`: go to next tab, create if not exists
     - `split`: open hovered file in a split

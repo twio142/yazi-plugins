@@ -188,19 +188,6 @@ M.smart = function(arg)
 		if target and target.cha.is_dir then
 			ya.mgr_emit("cd", { target.url })
 		end
-	elseif arg == "N" then
-		local files = cx.active.current.files
-		for i = 1, #files do
-			if files[i]:found() then
-				ya.mgr_emit("find_arrow", { previous = true })
-				return
-			end
-		end
-		local h = cx.active.current.hovered
-		if h.cha.is_dir  then
-			ya.mgr_emit("enter", {})
-		end
-		ya.mgr_emit("create", {})
 	elseif arg == "create-tab" then
 		local h = cx.active.current.hovered
 		ya.mgr_emit("tab_create", h and h.cha.is_dir and { h.url } or { current = true })
