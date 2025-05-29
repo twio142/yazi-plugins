@@ -16,42 +16,42 @@ M.on_selection = function(mode)
 	end
 	for _, url in pairs(cx.yanked) do
 		first = first or url.name
-		ya.mgr_emit("toggle", { url, state = "on" })
+		ya.emit("toggle", { url, state = "on" })
 	end
-	ya.mgr_emit("unyank", {})
+	ya.emit("unyank", {})
 	for i = 1, #cx.tabs do
 		for _, url in pairs(cx.tabs[i].selected) do
 			first = first or url.name
-			ya.mgr_emit("toggle", { url, state = "on" })
+			ya.emit("toggle", { url, state = "on" })
 		end
 	end
 	if not first then
 		return
 	end
 	local function locate()
-		ya.mgr_emit("reveal", { (is_dir and h.url or h.url.parent):join(first) })
-		ya.mgr_emit("unyank", {})
-		ya.mgr_emit("escape", {})
+		ya.emit("reveal", { (is_dir and h.url or h.url.parent):join(first) })
+		ya.emit("unyank", {})
+		ya.emit("escape", {})
 	end
 	if mode == "copy" or mode == "copy-force" then
 		if is_dir then
-			ya.mgr_emit("enter", {})
+			ya.emit("enter", {})
 		end
-		ya.mgr_emit("yank", {})
-		ya.mgr_emit("paste", { force = mode:match("force") and true or false })
+		ya.emit("yank", {})
+		ya.emit("paste", { force = mode:match("force") and true or false })
 		locate()
 	elseif mode == "move" or mode == "move-force" then
 		ps.sub("move", function(body)
-			ya.mgr_emit("reveal", { body.items[1].to })
+			ya.emit("reveal", { body.items[1].to })
 			ps.unsub("move")
 		end)
 		if is_dir then
-			ya.mgr_emit("enter", {})
+			ya.emit("enter", {})
 		end
-		ya.mgr_emit("yank", { cut = true })
-		ya.mgr_emit("paste", { force = mode:match("force") and true or false })
-		ya.mgr_emit("unyank", {})
-		ya.mgr_emit("escape", {})
+		ya.emit("yank", { cut = true })
+		ya.emit("paste", { force = mode:match("force") and true or false })
+		ya.emit("unyank", {})
+		ya.emit("escape", {})
 	elseif mode:match("new%-dir") then
 		local dir = (is_dir and h.url or h.url.parent):join("Folder with selected items")
 		dir = tostring(dir)
@@ -62,13 +62,13 @@ M.on_selection = function(mode)
 			dir,
 			dir
 		)
-		ya.mgr_emit("shell", { cmd })
+		ya.emit("shell", { cmd })
 	elseif mode:match("link") then
 		if is_dir then
-			ya.mgr_emit("enter", {})
+			ya.emit("enter", {})
 		end
-		ya.mgr_emit("yank", {})
-		ya.mgr_emit(
+		ya.emit("yank", {})
+		ya.emit(
 			mode:match("symlink") and "link" or "hardlink",
 			{
 				force = mode:match("force") and true or false,
@@ -78,21 +78,21 @@ M.on_selection = function(mode)
 		)
 		locate()
 	elseif mode == "delete" then
-		ya.mgr_emit("remove", {})
+		ya.emit("remove", {})
 	elseif mode == "edit" then
 		if os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
-			ya.mgr_emit("shell", { 'nvr -cc quit "$@"' })
+			ya.emit("shell", { 'nvr -cc quit "$@"' })
 		elseif os.getenv("TMUX_POPUP") then
 			local cmd = 'tmux-edit "$@"; tmux popup -C'
-			ya.mgr_emit("shell", { cmd })
+			ya.emit("shell", { cmd })
 		else
-			ya.mgr_emit("open", {})
+			ya.emit("open", {})
 		end
 	elseif mode == "rename" then
-		ya.mgr_emit("rename", {})
-		ya.mgr_emit("escape", {})
+		ya.emit("rename", {})
+		ya.emit("escape", {})
 	elseif mode == "exec" then
-		ya.mgr_emit("shell", {
+		ya.emit("shell", {
 			[=[
 			cache=/tmp/yazi_map_selection;
 			cmd="\n"
@@ -110,14 +110,14 @@ M.on_selection = function(mode)
 		})
 	elseif mode == "enter" then
 		if os.getenv("TMUX_POPUP") then
-			ya.mgr_emit("shell", { 'tmux-edit "$@"; tmux popup -C' })
+			ya.emit("shell", { 'tmux-edit "$@"; tmux popup -C' })
 		elseif os.getenv("NVIM") then
-			ya.mgr_emit("shell", { 'nvr -cc quit "$@"' })
+			ya.emit("shell", { 'nvr -cc quit "$@"' })
 		else
-			ya.mgr_emit("shell", { 'nvim "$@"', block = true })
+			ya.emit("shell", { 'nvim "$@"', block = true })
 		end
 	elseif mode == "sync" then
-		ya.mgr_emit("shell", { 'ya pub-to 0 select --list "$@"' })
+		ya.emit("shell", { 'ya pub-to 0 select --list "$@"' })
 	end
 end
 
@@ -137,9 +137,9 @@ M.smart = function(arg)
 		end
 		if os.getenv("NVIM") and not os.getenv("TMUX_POPUP") and not h.cha.is_dir then
 			if is_code() then
-				ya.mgr_emit("shell", { 'nvr -cc quit "$1"' })
+				ya.emit("shell", { 'nvr -cc quit "$1"' })
 			else
-				ya.mgr_emit("open", { hovered = true })
+				ya.emit("open", { hovered = true })
 			end
 		elseif os.getenv("TMUX_POPUP") then
 			local cmd = 'tmux-run %s "$1"; tmux popup -C'
@@ -148,14 +148,14 @@ M.smart = function(arg)
 			elseif is_code() then
 				cmd = cmd:format("nvim")
 			else
-				ya.mgr_emit("open", { hovered = true })
+				ya.emit("open", { hovered = true })
 				return
 			end
-			ya.mgr_emit("shell", { cmd })
+			ya.emit("shell", { cmd })
 		elseif h.cha.is_dir then
-			ya.mgr_emit("shell", { 'cd "$1"; $SHELL -l', block = true })
+			ya.emit("shell", { 'cd "$1"; $SHELL -l', block = true })
 		else
-			ya.mgr_emit("open", { hovered = true })
+			ya.emit("open", { hovered = true })
 		end
 	elseif arg == "open-neww" then
 		if not os.getenv("TMUX") then
@@ -163,12 +163,12 @@ M.smart = function(arg)
 		end
 		local h = cx.active.current.hovered
 		local cmd = string.format('NEWW=1 tmux-run %s "$1"; tmux popup -C', h.cha.is_dir and "cd" or "nvim")
-		ya.mgr_emit("shell", { cmd })
+		ya.emit("shell", { cmd })
 	elseif arg == "esc" then
 		if #cx.yanked > 0 then
-			ya.mgr_emit("unyank", {})
+			ya.emit("unyank", {})
 		else
-			ya.mgr_emit("escape", {})
+			ya.emit("escape", {})
 		end
 	elseif arg == "parent-up" then
 		local parent = cx.active.parent
@@ -177,7 +177,7 @@ M.smart = function(arg)
 		end
 		local target = parent.files[parent.cursor]
 		if target and target.cha.is_dir then
-			ya.mgr_emit("cd", { target.url })
+			ya.emit("cd", { target.url })
 		end
 	elseif arg == "parent-down" then
 		local parent = cx.active.parent
@@ -186,35 +186,35 @@ M.smart = function(arg)
 		end
 		local target = parent.files[parent.cursor + 2]
 		if target and target.cha.is_dir then
-			ya.mgr_emit("cd", { target.url })
+			ya.emit("cd", { target.url })
 		end
 	elseif arg == "create-tab" then
 		local h = cx.active.current.hovered
-		ya.mgr_emit("tab_create", h and h.cha.is_dir and { h.url } or { current = true })
+		ya.emit("tab_create", h and h.cha.is_dir and { h.url } or { current = true })
 	elseif arg == "next-tab" then
 		if #cx.tabs == 1 then
 			local h = cx.active.current.hovered
-			ya.mgr_emit("tab_create", h and h.cha.is_dir and { h.url } or { current = true })
+			ya.emit("tab_create", h and h.cha.is_dir and { h.url } or { current = true })
 		else
-			ya.mgr_emit("tab_switch", { 1, relative = true })
+			ya.emit("tab_switch", { 1, relative = true })
 		end
 	elseif arg == "split" then
 		local h = cx.active.current.hovered
 		if h.cha.is_dir and os.getenv("TMUX") then
-			ya.mgr_emit("shell", { 'tmux splitw -v -c "$1"; tmux popup -C' })
+			ya.emit("shell", { 'tmux splitw -v -c "$1"; tmux popup -C' })
 		elseif os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
-			ya.mgr_emit("shell", { 'nvr -cc quit -cc split "$1"' })
+			ya.emit("shell", { 'nvr -cc quit -cc split "$1"' })
 		elseif os.getenv("TMUX") then
-			ya.mgr_emit("shell", { 'tmux splitw -v "nvim "$1""; tmux popup -C' })
+			ya.emit("shell", { 'tmux splitw -v "nvim "$1""; tmux popup -C' })
 		end
 	elseif arg == "vsplit" then
 		local h = cx.active.current.hovered
 		if h.cha.is_dir and os.getenv("TMUX") then
-			ya.mgr_emit("shell", { 'tmux splitw -h -c "$1"; tmux popup -C' })
+			ya.emit("shell", { 'tmux splitw -h -c "$1"; tmux popup -C' })
 		elseif os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
-			ya.mgr_emit("shell", { 'nvr -cc quit -cc vsplit "$1"' })
+			ya.emit("shell", { 'nvr -cc quit -cc vsplit "$1"' })
 		elseif os.getenv("TMUX") then
-			ya.mgr_emit("shell", { 'tmux splitw -h "nvim "$1""; tmux popup -C' })
+			ya.emit("shell", { 'tmux splitw -h "nvim "$1""; tmux popup -C' })
 		end
 	end
 end
@@ -223,7 +223,7 @@ return {
 	setup = function()
 		ps.sub_remote("select", function(body)
 			for _, item in ipairs(body) do
-				ya.mgr_emit("toggle", { item, state = "on" })
+				ya.emit("toggle", { item, state = "on" })
 			end
 		end)
 	end,

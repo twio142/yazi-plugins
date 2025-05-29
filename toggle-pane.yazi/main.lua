@@ -53,11 +53,7 @@ local function entry(st, job)
 		st.parent, st.current, st.preview = nil, nil, nil
 	end
 
-	if ya.emit then
-		ya.emit("app:resize", {})
-	else
-		ya.app_emit("resize", {})
-	end
+	ya.emit("app:resize", {})
 end
 
 return { entry = entry }

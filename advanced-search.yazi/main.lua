@@ -17,11 +17,11 @@ function M.find()
 	while true do
 		local value, event = input:recv()
 		if event ~= 1 and event ~= 3 then
-			ya.mgr_emit("escape", { find = true })
+			ya.emit("escape", { find = true })
 			break
 		end
 
-		ya.mgr_emit("find_do", { value, smart = true })
+		ya.emit("find_do", { value, smart = true })
 
 		if event == 1 then
 			return
@@ -48,16 +48,16 @@ function M.filter()
 	while true do
 		local value, event = input:recv()
 		if event ~= 1 and event ~= 3 then
-			ya.mgr_emit("escape", { filter = true })
+			ya.emit("escape", { filter = true })
 			break
 		end
 
-		ya.mgr_emit("filter_do", { value, smart = true })
+		ya.emit("filter_do", { value, smart = true })
 
 		local h = hovered()
 		if event == 1 then
 			if h.url then
-				ya.mgr_emit("reveal", { h.url })
+				ya.emit("reveal", { h.url })
 			end
 			return
 		end
@@ -70,19 +70,19 @@ function M.smart_filter()
 	while true do
 		local value, event = input:recv()
 		if event ~= 1 and event ~= 3 then
-			ya.mgr_emit("escape", { filter = true })
+			ya.emit("escape", { filter = true })
 			break
 		end
 
-		ya.mgr_emit("filter_do", { value, smart = true })
+		ya.emit("filter_do", { value, smart = true })
 
 		local h = hovered()
 		if h.unique and h.is_dir then
-			ya.mgr_emit("escape", { filter = true })
-			ya.mgr_emit("enter", {})
+			ya.emit("escape", { filter = true })
+			ya.emit("enter", {})
 			input = prompt("Smart filter:")
 		elseif event == 1 then
-			ya.mgr_emit("reveal", { h.url })
+			ya.emit("reveal", { h.url })
 			return
 		end
 	end
@@ -95,7 +95,7 @@ end)
 function M.git_changes()
 	local cwd = get_cwd()
 	local child = Command("git")
-		:args({ "--no-optional-locks", "-c", "core.quotePath=", "status", "--short", "-uall", "--no-renames" })
+		:arg({ "--no-optional-locks", "-c", "core.quotePath=", "status", "--short", "-uall", "--no-renames" })
 		:cwd(tostring(cwd))
 		:stdout(Command.PIPED)
 		:spawn()
@@ -116,10 +116,10 @@ function M.git_changes()
 	if #files > 0 then
 		local id = ya.id("ft")
 		cwd = cwd:into_search("Git changes")
-		ya.mgr_emit("cd", { Url(cwd) })
-		ya.mgr_emit("update_files", { op = fs.op("part", { id = id, url = Url(cwd), files = {} }) })
-		ya.mgr_emit("update_files", { op = fs.op("part", { id = id, url = Url(cwd), files = files }) })
-		ya.mgr_emit("update_files", { op = fs.op("done", { id = id, url = cwd, cha = Cha({ kind = 16 }) }) })
+		ya.emit("cd", { Url(cwd) })
+		ya.emit("update_files", { op = fs.op("part", { id = id, url = Url(cwd), files = {} }) })
+		ya.emit("update_files", { op = fs.op("part", { id = id, url = Url(cwd), files = files }) })
+		ya.emit("update_files", { op = fs.op("done", { id = id, url = cwd, cha = Cha({ kind = 16 }) }) })
 	else
 		ya.notify({ title = "Git changes", content = "No changed files", timeout = 4 })
 	end

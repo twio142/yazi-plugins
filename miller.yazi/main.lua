@@ -20,7 +20,7 @@ done < "$file"
 printf "${vs[0]}"
 	]=]
 	scpt = string.format(scpt, tostring(file.url))
-	local output, _ = Command("bash"):args({ "-c", scpt }):stdout(Command.PIPED):stderr(Command.PIPED):output()
+	local output, _ = Command("bash"):arg({ "-c", scpt }):stdout(Command.PIPED):stderr(Command.PIPED):output()
 	local sep = output.stdout
 	return sep == "" and "," or sep
 end
@@ -46,7 +46,7 @@ function M:peek(job)
 	end
 	table.insert(args, "cat")
 	table.insert(args, tostring(job.file.url))
-	local child = Command("mlr"):args(args):stdout(Command.PIPED):spawn()
+	local child = Command("mlr"):arg(args):stdout(Command.PIPED):spawn()
 
 	local limit = job.area.h
 	local i, lines = 0, ""
@@ -66,10 +66,10 @@ function M:peek(job)
 
 	child:start_kill()
 	if job.skip > 0 and i < job.skip + limit then
-		ya.mgr_emit("peek", { math.max(0, i - limit), only_if = job.file.url, upper_bound = true })
+		ya.emit("peek", { math.max(0, i - limit), only_if = job.file.url, upper_bound = true })
 	else
 		lines = lines:gsub("\t", string.rep(" ", rt.preview.tab_size))
-		ya.preview_widgets(job, { ui.Text(lines):area(job.area) })
+		ya.preview_widget(job, ui.Text(lines):area(job.area))
 	end
 end
 

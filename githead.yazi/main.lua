@@ -238,7 +238,7 @@ return {
 
 			if this.cwd ~= cwd then
 				this.cwd = cwd
-				ya.mgr_emit("plugin", {
+				ya.emit("plugin", {
 					this._id,
 					ya.quote(tostring(cwd), true),
 				})
@@ -252,7 +252,7 @@ return {
 	entry = function(_, job)
 		local args = job.args or job
 		local command = Command("git")
-			:args({ "status", "--ignore-submodules=dirty", "--branch", "--show-stash", "--ahead-behind" })
+			:arg({ "status", "--ignore-submodules=dirty", "--branch", "--show-stash", "--ahead-behind" })
 			:cwd(args[1])
 			:env("LANGUAGE", "en_US.UTF-8")
 			:stdout(Command.PIPED)
