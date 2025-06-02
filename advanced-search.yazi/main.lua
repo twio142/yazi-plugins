@@ -95,7 +95,7 @@ end)
 function M.git_changes()
 	local cwd = get_cwd()
 	local child = Command("git")
-		:arg({ "--no-optional-locks", "-c", "core.quotePath=", "-c", "status.branch=false", "status", "--short", "-uall", "--no-renames" })
+		:arg({ "--no-optional-locks", "-c", "status.branch=false", "status", "--short", "-uall", "--no-renames" })
 		:cwd(tostring(cwd))
 		:stdout(Command.PIPED)
 		:spawn()
@@ -108,9 +108,10 @@ function M.git_changes()
 		line = line:gsub("\n", "")
 		local status = line:sub(1, 2)
 		if not status:find("D") then
-			local url = cwd:join(line:sub(4))
-			local cha = fs.cha(url)
-			table.insert(files, File({ url = url, cha = cha }))
+			local url = line:sub(4)
+			url = url:gsub('^"(.+)"$', '%1')
+			url = cwd:join(url)
+			table.insert(files, File({ url = url, cha = fs.cha(url) }))
 		end
 	end
 	if #files > 0 then
