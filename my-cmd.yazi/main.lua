@@ -91,6 +91,16 @@ M.on_selection = function(mode)
 	elseif mode == "rename" then
 		ya.emit("rename", {})
 		ya.emit("escape", {})
+	elseif mode == "diff" then
+		ya.emit("shell", {
+			[=[
+				[ "$#" -eq 2 ] || exit 0
+				bg=$(~/.local/bin/background)
+				w=$(stty size < /dev/tty | awk '{print $2}')
+				delta --$bg --navigate --tabs=2 -n -s --paging=always -w=$w "$@" | less -R
+			]=],
+			block = true,
+		})
 	elseif mode == "exec" then
 		ya.emit("shell", {
 			[=[
