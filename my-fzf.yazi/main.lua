@@ -298,6 +298,39 @@ M.selected = function(s)
 	end
 end
 
+M.shell = function(s)
+	local cwd = s.cwd
+	local title = "Shell"
+	local value, event = ya.input({
+		realtime = false,
+		title = title .. ":",
+		position = { "hovered", w = 50, x = 13, y = 1 },
+	})
+	if event == 1 then
+		if #s.selected == 0 then
+			s.selected = { s.hovered }
+		end
+		local child = Command("/bin/zsh")
+			:arg({ "-lic", value, s.hovered })
+			:arg(s.selected)
+			:cwd(cwd)
+			:stdout(Command.PIPED)
+			:stderr(Command.PIPED)
+		local output = child:output()
+		ya.dbg(output)
+		if output then
+			local stdout = output.stdout:gsub("\n$", "")
+			local stderr = output.stderr:gsub("\n$", "")
+			local status = output.status
+			if status ~= 0 and stderr ~= "" then
+				ya.notify({ title = title .. " Error", content = stderr, timeout = 2, level = "error" })
+			elseif stdout ~= "" then
+				ya.notify({ title = title, content = stdout, timeout = 2 })
+			end
+		end
+	end
+end
+
 local state = ya.sync(function()
 	local selected = {}
 	for _, url in pairs(cx.active.selected) do
@@ -305,6 +338,7 @@ local state = ya.sync(function()
 	end
 	return {
 		cwd = tostring(cx.active.current.cwd),
+		hovered = tostring(cx.active.current.hovered.url),
 		selected = selected,
 	}
 end)

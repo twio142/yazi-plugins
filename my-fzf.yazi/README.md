@@ -6,3 +6,4 @@
 - `git`: recent git repos (using lazygit cache)
 - `obsearch`: search in obsidian vault
 - `selected`: selected files in yazi
+- `shell`: run interactive shell command with a login shell (not blocking)
