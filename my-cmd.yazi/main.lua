@@ -198,9 +198,6 @@ M.smart = function(arg)
 		if target and target.cha.is_dir then
 			ya.emit("cd", { target.url })
 		end
-	elseif arg == "create-tab" then
-		local h = cx.active.current.hovered
-		ya.emit("tab_create", h and h.cha.is_dir and { h.url } or { current = true })
 	elseif arg == "next-tab" then
 		if #cx.tabs == 1 then
 			local h = cx.active.current.hovered
