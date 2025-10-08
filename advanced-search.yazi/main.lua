@@ -88,15 +88,23 @@ function M.smart_filter()
 	end
 end
 
-local get_cwd = ya.sync(function()
-	return cx.active.current.cwd
+local get_ctx = ya.sync(function()
+	local current = cx.active.current
+	local files = {}
+	for _, f in ipairs(current.files) do
+		table.insert(files, f.url)
+	end
+	return {
+		cwd = current.cwd,
+		cursor = current.cursor,
+		files = files,
+	}
 end)
 
-function M.git_changes()
-	local cwd = get_cwd()
+local function get_changed_files(dir, map)
 	local child = Command("git")
 		:arg({ "--no-optional-locks", "-c", "status.branch=false", "status", "--short", "-uall", "--no-renames" })
-		:cwd(tostring(cwd))
+		:cwd(tostring(dir))
 		:stdout(Command.PIPED)
 		:spawn()
 	local files = {}
@@ -109,20 +117,59 @@ function M.git_changes()
 		local status = line:sub(1, 2)
 		if not status:find("D") then
 			local url = line:sub(4)
-			url = url:gsub('^"(.+)"$', '%1')
-			url = cwd:join(url)
-			table.insert(files, File({ url = url, cha = fs.cha(url) }))
+			url = url:gsub('^"(.+)"$', "%1")
+			if map then
+				url = dir:join(url:match("^([^/]+)"))
+				files[tostring(url)] = true
+			else
+				url = dir:join(url)
+				table.insert(files, File({ url = url, cha = fs.cha(url) }))
+			end
 		end
 	end
-	if #files > 0 then
+	return files
+end
+
+function M.git_changes()
+	local cwd = get_ctx().cwd
+	local changed_files = get_changed_files(cwd)
+	if #changed_files > 0 then
 		local id = ya.id("ft")
 		cwd = cwd:into_search("Git changes")
 		ya.emit("cd", { Url(cwd) })
 		ya.emit("update_files", { op = fs.op("part", { id = id, url = Url(cwd), files = {} }) })
-		ya.emit("update_files", { op = fs.op("part", { id = id, url = Url(cwd), files = files }) })
+		ya.emit("update_files", { op = fs.op("part", { id = id, url = Url(cwd), files = changed_files }) })
 		ya.emit("update_files", { op = fs.op("done", { id = id, url = cwd, cha = Cha({ kind = 16 }) }) })
 	else
 		ya.notify({ title = "Git changes", content = "No changed files", timeout = 4 })
+	end
+end
+
+function M.prev_change()
+	local ctx = get_ctx()
+	local cursor = ctx.cursor
+	local files = ctx.files
+	local changed_files = get_changed_files(ctx.cwd, true)
+	for i = cursor, 1, -1 do
+		local f = files[i]
+		if changed_files[tostring(f)] then
+			ya.emit("reveal", { f })
+			return
+		end
+	end
+end
+
+function M.next_change()
+	local ctx = get_ctx()
+	local cursor = ctx.cursor
+	local files = ctx.files
+	local changed_files = get_changed_files(ctx.cwd, true)
+	for i = cursor + 2, #files, 1 do
+		local f = files[i]
+		if changed_files[tostring(f)] then
+			ya.emit("reveal", { f })
+			return
+		end
 	end
 end
 
