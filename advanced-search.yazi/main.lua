@@ -173,6 +173,54 @@ function M.next_change()
 	end
 end
 
+local function find_tag(prev)
+	local ctx = get_ctx()
+	local files = ctx.files
+	local cursor = ctx.cursor
+	local child = Command("tag")
+		:arg({ "-f", "*", "." })
+		:cwd(tostring(ctx.cwd))
+		:stdout(Command.PIPED)
+		:spawn()
+	local map = {}
+	while true do
+		local line, event = child:read_line()
+		if event ~= 0 then
+			break
+		end
+		line = line:gsub("\n", "")
+		map[line] = true
+	end
+	if next(map) == nil then
+		return
+	end
+	if prev then
+		for i = cursor, 1, -1 do
+			local f = files[i]
+			if map[tostring(f)] then
+				ya.emit("reveal", { f })
+				return
+			end
+		end
+	else
+		for i = cursor + 2, #files, 1 do
+			local f = files[i]
+			if map[tostring(f)] then
+				ya.emit("reveal", { f })
+				return
+			end
+		end
+	end
+end
+
+function M.prev_tag()
+	find_tag(true)
+end
+
+function M.next_tag()
+	find_tag(false)
+end
+
 return {
 	entry = function(_, job)
 		M[job.args[1]]()
