@@ -59,6 +59,8 @@ M.put = function()
             name="${root_name}_$i$ext"
           done
           mv "$file" "$target/$name"
+				else
+				  ya emit plugin oil "notify '$name not found in trash.'"
         fi
       done < "$cache"
     ]=]):format(cache_file, trash_dir),
@@ -84,28 +86,27 @@ M.add = function(state)
 		if dir then
 			local status, err = Command("mkdir"):arg({ "-p", dir }):cwd(cwd):spawn():wait()
 			if status.code ~= 0 then
-				ya.notify({
-					title = "Error",
-					content = tostring(err),
-					level = "error",
-					timeout = 3,
-				})
+				M.notify(_, tostring(err))
 				return
 			end
 		end
 		if last_part then
 			local status, err = Command("touch"):arg(value):cwd(cwd):spawn():wait()
 			if status.code ~= 0 then
-				ya.notify({
-					title = "Error",
-					content = tostring(err),
-					level = "error",
-					timeout = 3,
-				})
+				M.notify(_, tostring(err))
 			end
 			return ya.emit("reveal", { cwd .. "/" .. value })
 		end
 	end
+end
+
+M.notify = function(_, message, level)
+	ya.notify({
+		title = "Error",
+		content = message,
+		level = level or "error",
+		timeout = 2,
+	})
 end
 
 local state = ya.sync(function()
@@ -127,7 +128,7 @@ return {
 		local func = M[args[1]]
 		if func ~= nil then
 			local s = state()
-			return func(s)
+			return func(s, table.unpack(args, 2))
 		end
 	end,
 }
