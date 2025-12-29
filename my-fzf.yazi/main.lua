@@ -8,7 +8,7 @@ local OFF = "\x1b[0m"
 M.z = function(s)
 	local cwd = s.cwd
 	if not s.query then
-		ya.hide()
+		ui.hide()
 	end
 	local _z = ":reload:zoxide query {q} -l --exclude $PWD || true"
 	local keys = {
@@ -61,7 +61,7 @@ end
 M.fd = function(s)
 	local cwd = s.cwd
 	if not s.query then
-		ya.hide()
+		ui.hide()
 	end
 	local _hd = function(t)
 		local types = {
@@ -141,7 +141,7 @@ end
 M.fif = function(s)
 	local cwd = s.cwd
 	if not s.query then
-		ya.hide()
+		ui.hide()
 	end
 	local fd_prefix = "fd -H -L -tf -p "
 	local fd_suffix = ". -X ls -t | sed 's/^\\.\\//\x1b[35m/' | sed 's/\\$/\x1b[0m/'"
@@ -190,7 +190,7 @@ end
 
 M.git = function(s)
 	local cwd = s.cwd
-	ya.hide()
+	ui.hide()
 	local child = Command("awk")
 		:arg("/recentrepos:/ {found=1; next} found && /^[^[:space:]]/ {exit} found {print}")
 		:arg(os.getenv("XDG_STATE_HOME") .. "/lazygit/state.yml")
@@ -225,7 +225,7 @@ M.git = function(s)
 end
 
 M.obsearch = function()
-	ya.hide()
+	ui.hide()
 	local child = Command("obsearch"):arg({ "-o" }):stdout(Command.PIPED):spawn()
 	local files = {}
 	while true do
@@ -253,7 +253,7 @@ M.selected = function(s)
 		return
 	end
 	if not s.map then
-		ya.hide()
+		ui.hide()
 		s.map = {}
 		for _, path in pairs(s.selected) do
 			s.map[path] = true
@@ -304,7 +304,7 @@ M.shell = function(s)
 	local value, event = ya.input({
 		realtime = false,
 		title = title .. ":",
-		position = { "hovered", w = 50, x = 13, y = 1 },
+		pos = { "hovered", w = 50, x = 13, y = 1 },
 	})
 	if event == 1 then
 		if #s.selected == 0 then

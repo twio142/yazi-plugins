@@ -34,6 +34,7 @@ M.on_selection = function(mode)
 		ya.emit("escape", {})
 	end
 	if mode == "copy" or mode == "copy-force" then
+		-- TODO: use `duplicate` event
 		if is_dir then
 			ya.emit("enter", {})
 		end

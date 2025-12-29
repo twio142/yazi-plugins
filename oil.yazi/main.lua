@@ -75,7 +75,7 @@ end
 M.add = function(state)
 	local value, event = ya.input({
 		title = "Create:",
-		position = { "hovered", w = 50, x = 13, y = 1 },
+		pos = { "hovered", w = 50, x = 13, y = 1 },
 	})
 	local cwd = state.cwd
 	if event == 1 and value ~= "" then

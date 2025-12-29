@@ -5,7 +5,7 @@ local M = {}
 local function prompt(title)
 	return ya.input({
 		title = title .. ":",
-		position = { "hovered", w = 50, x = 13, y = 1 },
+		pos = { "hovered", w = 50, x = 13, y = 1 },
 		realtime = true,
 		debounce = 0.1,
 	})

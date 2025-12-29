@@ -196,7 +196,7 @@ local function get_bind_key()
     local key_set, event = ya.input({
         realtime = false,
         title = "set your bind key(one key):",
-        position = { "top-center", y = 3, w = 40 },
+        pos = { "top-center", y = 3, w = 40 },
     })
     if event == 1 and key_set ~= "" then
         local key_set = assign_key(key_set)
@@ -227,7 +227,7 @@ return {
             local value, event = ya.input({
                 realtime = false,
                 title = "set bookmark message:",
-                position = { "top-center", y = 3, w = 40 },
+                pos = { "top-center", y = 3, w = 40 },
             })
             if event == 1 then
                 local key = get_bind_key()
@@ -243,7 +243,7 @@ return {
             local value, event = ya.input({
                 realtime = false,
                 title = "input change key:",
-                position = { "top-center", y = 3, w = 40 },
+                pos = { "top-center", y = 3, w = 40 },
             })
             if event == 1 then
                 modify_bookmark(value)

@@ -1,4 +1,4 @@
---- @since 25.5.31
+--- @since 25.12.29
 
 local WINDOWS = ya.target_family() == "windows"
 
@@ -125,7 +125,7 @@ local add = ya.sync(function(st, cwd, repo, changed)
 			st.repos[repo][path] = code
 		end
 	end
-	ya.render()
+	ui.render()
 end)
 
 ---@param cwd string
@@ -137,7 +137,7 @@ local remove = ya.sync(function(st, cwd)
 		return
 	end
 
-	ya.render()
+	ui.render()
 	st.dirs[cwd] = nil
 	if not st.repos[repo] then
 		return
@@ -179,8 +179,12 @@ local function setup(st, opts)
 	}
 
 	Linemode:children_add(function(self)
+		if not self._file.in_current then
+			return ""
+		end
+
 		local url = self._file.url
-		local repo = st.dirs[tostring(url.base)]
+		local repo = st.dirs[tostring(url.base or url.parent)]
 		local code
 		if repo then
 			code = repo == CODES.excluded and CODES.ignored or st.repos[repo][tostring(url):sub(#repo + 2)]
@@ -198,7 +202,7 @@ end
 
 ---@type UnstableFetcher
 local function fetch(_, job)
-	local cwd = job.files[1].url.base
+	local cwd = job.files[1].url.base or job.files[1].url.parent
 	local repo = root(cwd)
 	if not repo then
 		remove(tostring(cwd))
