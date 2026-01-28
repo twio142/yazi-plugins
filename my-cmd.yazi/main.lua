@@ -1,4 +1,4 @@
---- @since 25.2.26
+--- @since 25.12.29
 --- @sync entry
 --- @diagnostic disable: undefined-global
 _G.ya = _G.ya or {}
@@ -34,13 +34,17 @@ M.on_selection = function(mode)
 		ya.emit("escape", {})
 	end
 	if mode == "copy" or mode == "copy-force" then
-		-- TODO: use `duplicate` event
+		ps.sub("duplicate", function(body)
+			ya.emit("reveal", { body.items[1].to })
+			ps.unsub("duplicate")
+		end)
 		if is_dir then
 			ya.emit("enter", {})
 		end
 		ya.emit("yank", {})
 		ya.emit("paste", { force = mode:match("force") and true or false })
-		locate()
+		ya.emit("unyank", {})
+		ya.emit("escape", {})
 	elseif mode == "move" or mode == "move-force" then
 		ps.sub("move", function(body)
 			ya.emit("reveal", { body.items[1].to })
