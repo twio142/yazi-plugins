@@ -5,12 +5,11 @@ local M = {}
 local BOLD = "\x1b[1;36m"
 local OFF = "\x1b[0m"
 
-M.z = function(s)
+M.zoxide = function(s)
 	local cwd = s.cwd
 	if not s.query then
 		ui.hide()
 	end
-	local _z = ":reload:zoxide query {q} -l --exclude $PWD || true"
 	local keys = {
 		F = "Search files",
 		G = "Grep",
@@ -24,14 +23,17 @@ M.z = function(s)
 	header = header:sub(1, -4)
 	local child = Command("fzf")
 		:arg({ "--query", s.query or "" })
-		:arg({ "--bind", "start" .. _z })
-		:arg({ "--bind", "change" .. _z })
+		:arg({ "--bind", "start:reload:zoxide query {q} -l --exclude '${PWD}' || true" })
+		:arg({ "--bind", "change:reload:eval zoxide query {q} -l --exclude ${PWD:q:q} || true" })
 		:arg({ "--bind", "ctrl-f:become(echo 'file\n{}\n{q}')" })
 		:arg({ "--bind", "ctrl-g:become(echo 'grep\n{}\n{q}')" })
 		:arg({ "--bind", "ctrl-t:print(tab)+accept" })
 		:arg({ "--header", header })
-		:arg({ "--disabled", "--preview-window=up,60%" })
+		:arg({ "--disabled" })
 		:arg({ "--preview", "fzf-preview {}" })
+		:arg({ "--preview-window", "up,60%" })
+		:arg({ "--preview-label", " Jump to path " })
+		:arg({ "--preview-label-pos=bottom" })
 		:cwd(cwd)
 		:stdout(Command.PIPED)
 		:spawn()
@@ -60,6 +62,15 @@ end
 
 M.fd = function(s)
 	local cwd = s.cwd
+	if Url(cwd):starts_with("sftp://") then
+		ya.notify({
+			title = "FZF",
+			content = "Only supported in local directory",
+			timeout = 2,
+			level = "warn",
+		})
+		return
+	end
 	if not s.query then
 		ui.hide()
 	end
@@ -91,7 +102,10 @@ M.fd = function(s)
 		)
 	end
 	local child = Command("fzf")
-		:arg({ "--preview", "fzf-preview {}", "--preview-window=up,60%", "-m" })
+		:arg({ "--preview", "fzf-preview {}", "-m" })
+		:arg({ "--preview-window", "up,60%" })
+		:arg({ "--preview-label-pos=bottom" })
+		:arg({ "--preview-label", " Files " })
 		:arg({ "--bind", _fd("start", "f") })
 		:arg({ "--bind", _fd("alt-d", "d") })
 		:arg({ "--bind", _fd("alt-l", "l") })
@@ -125,7 +139,7 @@ M.fd = function(s)
 		ya.emit(cha.is_dir and "cd" or "reveal", { file })
 	elseif #files > 1 then
 		if files[1] == "back" then
-			M.z({ cwd = os.getenv("PWD"), query = s.query })
+			M.zoxide({ cwd = os.getenv("PWD"), query = s.query })
 			return
 		end
 		local last_file
@@ -138,8 +152,17 @@ M.fd = function(s)
 	end
 end
 
-M.fif = function(s)
+M.grep = function(s)
 	local cwd = s.cwd
+	if Url(cwd):starts_with("sftp://") then
+		ya.notify({
+			title = "FZF",
+			content = "Only supported in local directory",
+			timeout = 2,
+			level = "warn",
+		})
+		return
+	end
 	if not s.query then
 		ui.hide()
 	end
@@ -157,6 +180,7 @@ M.fif = function(s)
 		:arg({ "--bind", "ctrl-b:print(back)+accept" })
 		:arg({ "--delimiter", ":" })
 		:arg({ "--preview", "[ -z {2} ] && fzf-preview {} || bat --color=always {1} --highlight-line {2}" })
+		:arg({ "--preview-label", " Grep " })
 		:arg({ "--preview-window", "up,60%,border-bottom,+{2}+3/3,~3" })
 		:cwd(cwd)
 		:stdout(Command.PIPED)
@@ -175,7 +199,7 @@ M.fif = function(s)
 		ya.emit("reveal", { file })
 	elseif #files > 1 then
 		if files[1] == "back" then
-			M.z({ cwd = os.getenv("PWD"), query = s.query })
+			M.zoxide({ cwd = os.getenv("PWD"), query = s.query })
 			return
 		end
 		local last_file
@@ -212,6 +236,9 @@ M.git = function(s)
 			"--preview",
 			[[echo -e "\033[1m$(basename {})\033[0m\n"; git -c color.status=always -C {} status -bs]],
 			"--preview-window=wrap,up,60%",
+			"--preview-label",
+			" Git Repos ",
+			"--preview-label-pos=bottom",
 		})
 		:stdin(Command.PIPED)
 		:stdout(Command.PIPED)
@@ -260,7 +287,11 @@ M.selected = function(s)
 		end
 	end
 	local child = Command("fzf")
-		:arg({ "-m", "--preview", "fzf-preview {}", "--preview-window", "up,60%" })
+		:arg({ "-m" })
+		:arg({ "--preview", "fzf-preview {}" })
+		:arg({ "--preview-window", "up,60%" })
+		:arg({ "--preview-label-pos=bottom" })
+		:arg({ "--preview-label", " Selected Files " })
 		:arg({ "--bind", "ctrl-x:print(deselect)+accept" })
 		:arg({ "--header", ("%s⌃X%s Deselect"):format(BOLD, OFF) })
 		:stdin(Command.PIPED)
@@ -300,6 +331,15 @@ end
 
 M.shell = function(s)
 	local cwd = s.cwd
+	if Url(cwd):starts_with("sftp://") then
+		ya.notify({
+			title = "Shell",
+			content = "Only supported in local directory",
+			timeout = 2,
+			level = "warn",
+		})
+		return
+	end
 	local title = "Shell"
 	local value, event = ya.input({
 		realtime = false,
