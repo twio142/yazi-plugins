@@ -228,6 +228,12 @@ M.smart = function(arg)
 		elseif os.getenv("TMUX") then
 			ya.emit("shell", { 'tmux splitw -h "nvim "$1""; tmux popup -C' })
 		end
+	elseif arg == "copy-path" then
+		local path = tostring(cx.active.current.hovered.url.path)
+		os.execute("printf " .. ya.quote(path) .. " | " .. (os.getenv("TMUX") and "tmux loadb -" or "pbcopy"))
+	elseif arg == "copy-cwd" then
+		local path = tostring(cx.active.current.cwd.path)
+		os.execute("printf " .. ya.quote(path) .. " | " .. (os.getenv("TMUX") and "tmux loadb -" or "pbcopy"))
 	end
 end
 
