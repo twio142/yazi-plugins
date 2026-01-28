@@ -5,12 +5,11 @@ local M = {}
 local BOLD = "\x1b[1;36m"
 local OFF = "\x1b[0m"
 
-M.z = function(s)
+M.zoxide = function(s)
 	local cwd = s.cwd
 	if not s.query then
 		ui.hide()
 	end
-	local _z = ":reload:zoxide query {q} -l --exclude $PWD || true"
 	local keys = {
 		F = "Search files",
 		G = "Grep",
@@ -24,14 +23,17 @@ M.z = function(s)
 	header = header:sub(1, -4)
 	local child = Command("fzf")
 		:arg({ "--query", s.query or "" })
-		:arg({ "--bind", "start" .. _z })
-		:arg({ "--bind", "change" .. _z })
+		:arg({ "--bind", "start:reload:zoxide query {q} -l --exclude '${PWD}' || true" })
+		:arg({ "--bind", "change:reload:eval zoxide query {q} -l --exclude ${PWD:q:q} || true" })
 		:arg({ "--bind", "ctrl-f:become(echo 'file\n{}\n{q}')" })
 		:arg({ "--bind", "ctrl-g:become(echo 'grep\n{}\n{q}')" })
 		:arg({ "--bind", "ctrl-t:print(tab)+accept" })
 		:arg({ "--header", header })
-		:arg({ "--disabled", "--preview-window=up,60%" })
+		:arg({ "--disabled" })
 		:arg({ "--preview", "fzf-preview {}" })
+		:arg({ "--preview-window", "up,60%" })
+		:arg({ "--preview-label= Jump to path " })
+		:arg({ "--preview-label-pos=bottom" })
 		:cwd(cwd)
 		:stdout(Command.PIPED)
 		:spawn()
@@ -52,7 +54,7 @@ M.z = function(s)
 	elseif lines[1] == "file" then
 		M.fd({ cwd = lines[2], query = lines[3] })
 	elseif lines[1] == "grep" then
-		M.fif({ cwd = lines[2], query = lines[3] })
+		M.grep({ cwd = lines[2], query = lines[3] })
 	elseif lines[1] == "tab" then
 		ya.emit("tab_create", { lines[2] })
 	end
@@ -60,6 +62,15 @@ end
 
 M.fd = function(s)
 	local cwd = s.cwd
+	if cwd:match("^sftp://") then
+		ya.notify({
+			title = "FZF",
+			content = "Only supported in local directory",
+			timeout = 2,
+			level = "warn",
+		})
+		return
+	end
 	if not s.query then
 		ui.hide()
 	end
@@ -91,7 +102,10 @@ M.fd = function(s)
 		)
 	end
 	local child = Command("fzf")
-		:arg({ "--preview", "fzf-preview {}", "--preview-window=up,60%", "-m" })
+		:arg({ "--preview", "fzf-preview {}", "-m" })
+		:arg({ "--preview-window", "up,60%" })
+		:arg({ "--preview-label-pos=bottom" })
+		:arg({ "--preview-label= Files " })
 		:arg({ "--bind", _fd("start", "f") })
 		:arg({ "--bind", _fd("alt-d", "d") })
 		:arg({ "--bind", _fd("alt-l", "l") })
@@ -125,7 +139,7 @@ M.fd = function(s)
 		ya.emit(cha.is_dir and "cd" or "reveal", { file })
 	elseif #files > 1 then
 		if files[1] == "back" then
-			M.z({ cwd = os.getenv("PWD"), query = s.query })
+			M.zoxide({ cwd = os.getenv("PWD"), query = s.query })
 			return
 		end
 		local last_file
@@ -138,8 +152,17 @@ M.fd = function(s)
 	end
 end
 
-M.fif = function(s)
+M.grep = function(s)
 	local cwd = s.cwd
+	if cwd:match("^sftp://") then
+		ya.notify({
+			title = "FZF",
+			content = "Only supported in local directory",
+			timeout = 2,
+			level = "warn",
+		})
+		return
+	end
 	if not s.query then
 		ui.hide()
 	end
@@ -157,7 +180,8 @@ M.fif = function(s)
 		:arg({ "--bind", "ctrl-b:print(back)+accept" })
 		:arg({ "--delimiter", ":" })
 		:arg({ "--preview", "[ -z {2} ] && fzf-preview {} || bat --color=always {1} --highlight-line {2}" })
-		:arg({ "--preview-window", "up,60%,border-bottom,+{2}+3/3,~3" })
+		:arg({ "--preview-label= Grep ", "--preview-label-pos=bottom" })
+		:arg({ "--preview-window", "up,60%,+{2}+3/3,~3" })
 		:cwd(cwd)
 		:stdout(Command.PIPED)
 		:spawn()
@@ -175,72 +199,12 @@ M.fif = function(s)
 		ya.emit("reveal", { file })
 	elseif #files > 1 then
 		if files[1] == "back" then
-			M.z({ cwd = os.getenv("PWD"), query = s.query })
+			M.zoxide({ cwd = os.getenv("PWD"), query = s.query })
 			return
 		end
 		local last_file
 		for _, file in ipairs(files) do
 			file = Url(cwd):join(file)
-			ya.emit("toggle", { file, state = "on" })
-			last_file = file
-		end
-		ya.emit("reveal", { last_file })
-	end
-end
-
-M.git = function(s)
-	local cwd = s.cwd
-	ui.hide()
-	local child = Command("awk")
-		:arg("/recentrepos:/ {found=1; next} found && /^[^[:space:]]/ {exit} found {print}")
-		:arg(os.getenv("XDG_STATE_HOME") .. "/lazygit/state.yml")
-		:stdout(Command.PIPED)
-		:spawn()
-	local repos = {}
-	while true do
-		local repo, event = child:read_line()
-		if event ~= 0 then
-			break
-		end
-		repo = repo:gsub("^ +- ", ""):gsub("\n", "")
-		if repo ~= "" and repo ~= cwd then
-			table.insert(repos, repo)
-		end
-	end
-	child = Command("fzf")
-		:arg({
-			"--preview",
-			[[echo -e "\033[1m$(basename {})\033[0m\n"; git -c color.status=always -C {} status -bs]],
-			"--preview-window=wrap,up,60%",
-		})
-		:stdin(Command.PIPED)
-		:stdout(Command.PIPED)
-		:spawn()
-	child:write_all(table.concat(repos, "\n"))
-	child:flush()
-	local selected = child:wait_with_output().stdout:gsub("\n", "")
-	if selected ~= "" then
-		ya.emit("cd", { selected })
-	end
-end
-
-M.obsearch = function()
-	ui.hide()
-	local child = Command("obsearch"):arg({ "-o" }):stdout(Command.PIPED):spawn()
-	local files = {}
-	while true do
-		local line, event = child:read_line()
-		if event ~= 0 then
-			break
-		end
-		local file = line:match("^[^:\n]+")
-		table.insert(files, file)
-	end
-	if #files == 1 then
-		ya.emit("reveal", { files[1] })
-	elseif #files > 1 then
-		local last_file
-		for _, file in ipairs(files) do
 			ya.emit("toggle", { file, state = "on" })
 			last_file = file
 		end
@@ -260,7 +224,11 @@ M.selected = function(s)
 		end
 	end
 	local child = Command("fzf")
-		:arg({ "-m", "--preview", "fzf-preview {}", "--preview-window", "up,60%" })
+		:arg({ "-m" })
+		:arg({ "--preview", "fzf-preview {}" })
+		:arg({ "--preview-window", "up,60%" })
+		:arg({ "--preview-label-pos=bottom" })
+		:arg({ "--preview-label= Selected Files " })
 		:arg({ "--bind", "ctrl-x:print(deselect)+accept" })
 		:arg({ "--header", ("%s⌃X%s Deselect"):format(BOLD, OFF) })
 		:stdin(Command.PIPED)
@@ -338,7 +306,7 @@ local state = ya.sync(function()
 	end
 	return {
 		cwd = tostring(cx.active.current.cwd),
-		hovered = tostring(cx.active.current.hovered.url),
+		hovered = cx.active.current.hovered and tostring(cx.active.current.hovered.url) or nil,
 		selected = selected,
 	}
 end)
