@@ -32,6 +32,8 @@ M.delete = function(state)
 	})
 	if confirmed then
 		ya.emit("shell", { trash_cmd .. ' "$@"' })
+		ya.emit("unyank", {})
+		ya.emit("escape", {})
 	end
 end
 
