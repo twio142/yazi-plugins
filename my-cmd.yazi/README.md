@@ -11,6 +11,8 @@
     - `next-tab`: go to next tab, create if not exists
     - `split`: open hovered file in a split
     - `vsplit`: open hovered file in a vertical split
+    - `copy-path`: copy hovered file's path
+    - `copy-cwd`: copy cwd path
 - `on_selection`
     - Act on selected files across all tabs
     - `copy` / `copy-force`: copy selected files to the hovered path
