@@ -1,9 +1,7 @@
 ## Usage
 
-- `z`: zoxide
-- `fd`: fd-find
-- `fif`: rg-find-in-files
-- `git`: recent git repos (using lazygit cache)
-- `obsearch`: search in obsidian vault
+- `zoxide`
+- `fd`
+- `grep`
 - `selected`: selected files in yazi
 - `shell`: run interactive shell command with a login shell (not blocking)
