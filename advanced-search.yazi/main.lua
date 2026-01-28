@@ -1,5 +1,5 @@
 ---@diagnostic disable: undefined-global
---- @since 25.3.7
+--- @since 25.12.29
 local M = {}
 
 local function prompt(title)
@@ -122,8 +122,7 @@ local function get_changed_files(dir, map)
 				url = dir:join(url:match("^([^/]+)"))
 				files[tostring(url)] = true
 			else
-				url = dir:join(url)
-				table.insert(files, File({ url = url, cha = fs.cha(url) }))
+				table.insert(files, url)
 			end
 		end
 	end
@@ -138,8 +137,12 @@ function M.git_changes()
 		cwd = cwd:into_search("Git changes")
 		ya.emit("cd", { Url(cwd) })
 		ya.emit("update_files", { op = fs.op("part", { id = id, url = Url(cwd), files = {} }) })
+		for i, url in ipairs(changed_files) do
+			url = cwd:join(url)
+			changed_files[i] = File({ url = url, cha = fs.cha(url, true) })
+		end
 		ya.emit("update_files", { op = fs.op("part", { id = id, url = Url(cwd), files = changed_files }) })
-		ya.emit("update_files", { op = fs.op("done", { id = id, url = cwd, cha = Cha({ kind = 16 }) }) })
+		ya.emit("update_files", { op = fs.op("done", { id = id, url = cwd, cha = Cha({ mode = tonumber("100644", 8) }) }) })
 	else
 		ya.notify({ title = "Git changes", content = "No changed files", timeout = 4 })
 	end
