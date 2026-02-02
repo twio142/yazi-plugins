@@ -150,7 +150,10 @@ M.smart = function(arg)
 			end
 			return mime:match("^text/") or mime:match("^application/json")
 		end
-		if os.getenv("NVIM") and not os.getenv("TMUX_POPUP") and not h.cha.is_dir then
+		if h.cha.is_dir and tostring(h.url):match("^sftp://") then
+			local cmd = string.format("ssh %s -t 'cd %s && $SHELL -l'", h.url.domain, ya.quote(tostring(h.url.path)))
+			ya.emit("shell", { cmd, block = true })
+		elseif os.getenv("NVIM") and not os.getenv("TMUX_POPUP") and not h.cha.is_dir then
 			if is_code() then
 				ya.emit("shell", { 'nvr -cc quit "$1"' })
 			else
@@ -177,7 +180,12 @@ M.smart = function(arg)
 			return
 		end
 		local h = cx.active.current.hovered
-		local cmd = string.format('NEWW=1 tmux-run %s "$1"; tmux popup -C', h.cha.is_dir and "cd" or "nvim")
+		local cmd
+		if h.cha.is_dir and tostring(h.url):match("^sftp://") then
+			cmd = string.format([[tmux neww 'ssh %s -t "cd %s && \$SHELL -l"'; tmux popup -C]], h.url.domain, ya.quote(tostring(h.url.path)))
+		else
+			cmd = string.format('NEWW=1 tmux-run %s "$1"; tmux popup -C', h.cha.is_dir and "cd" or "nvim")
+		end
 		ya.emit("shell", { cmd })
 	elseif arg == "esc" then
 		if #cx.yanked > 0 then
@@ -213,7 +221,13 @@ M.smart = function(arg)
 	elseif arg == "split" then
 		local h = cx.active.current.hovered
 		if h.cha.is_dir and os.getenv("TMUX") then
-			ya.emit("shell", { 'tmux splitw -v -c "$1"; tmux popup -C' })
+			local cmd
+			if tostring(h.url):match("^sftp://") then
+				cmd = string.format([[tmux splitw -v 'ssh %s -t "cd %s && \$SHELL -l"'; tmux popup -C]], h.url.domain, ya.quote(tostring(h.url.path)))
+			else
+				cmd = 'tmux splitw -v -c "$1"; tmux popup -C'
+			end
+			ya.emit("shell", { cmd })
 		elseif os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
 			ya.emit("shell", { 'nvr -cc quit -cc split "$1"' })
 		elseif os.getenv("TMUX") then
@@ -222,7 +236,13 @@ M.smart = function(arg)
 	elseif arg == "vsplit" then
 		local h = cx.active.current.hovered
 		if h.cha.is_dir and os.getenv("TMUX") then
-			ya.emit("shell", { 'tmux splitw -h -c "$1"; tmux popup -C' })
+			local cmd
+			if tostring(h.url):match("^sftp://") then
+				cmd = string.format([[tmux splitw -h 'ssh %s -t "cd %s && \$SHELL -l"'; tmux popup -C]], h.url.domain, ya.quote(tostring(h.url.path)))
+			else
+				cmd = 'tmux splitw -h -c "$1"; tmux popup -C'
+			end
+			ya.emit("shell", { cmd })
 		elseif os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
 			ya.emit("shell", { 'nvr -cc quit -cc vsplit "$1"' })
 		elseif os.getenv("TMUX") then
