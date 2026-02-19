@@ -19,6 +19,9 @@ end
 local function delete_lines_by_content(file_path, pattern)
     local lines = {}
     local file = io.open(file_path, "r")
+    if not file then
+        return
+    end
     -- Read all lines and store those that do not match the pattern
     for line in file:lines() do
         if not line:find(pattern) then
@@ -28,7 +31,10 @@ local function delete_lines_by_content(file_path, pattern)
     file:close()
     -- Write back the lines that don't match the pattern
     file = io.open(file_path, "w")
-    for i, line in ipairs(lines) do
+    if not file then
+        return
+    end
+    for _, line in ipairs(lines) do
         file:write(line .. "\n")
     end
     file:close()
@@ -37,7 +43,10 @@ end
 -- save table to file
 local save_to_file = ya.sync(function(state, filename)
     local file = io.open(filename, "w+")
-    for i, f in ipairs(state.bookmarks) do
+    if not file then
+        return
+    end
+    for _, f in ipairs(state.bookmarks) do
         file:write(string.format("%s\t%s\t%s\t%s", f.on, f.file_url, f.desc, f.isdir), "\n")
     end
     file:close()
@@ -50,8 +59,8 @@ local load_file_to_state = ya.sync(function(state, filename)
     if file == nil then
         return
     end
-    for line in file:lines() do
-        line = line:gsub("[\r\n]", "")
+    for l in file:lines() do
+        local line = l:gsub("[\r\n]", "")
         local bookmark = string_split(line, "\t")
         if bookmark == nil or #bookmark < 4 then
             goto nextline
@@ -70,7 +79,7 @@ end)
 local save_bookmark = ya.sync(function(state, message, key)
     local under_cursor_file = cx.active.current.hovered
     -- avoid add exists url
-    for y, cand in ipairs(state.bookmarks) do
+    for _, cand in ipairs(state.bookmarks) do
         if tostring(under_cursor_file.url) == cand.desc then
             return
         end
@@ -109,7 +118,7 @@ end)
 
 local modify_bookmark = ya.sync(function(state, key)
     local under_cursor_file = cx.active.current.hovered
-    for i, f in ipairs(state.bookmarks) do
+    for _, f in ipairs(state.bookmarks) do
         if f.on == key then
             f.file_url = tostring(under_cursor_file.url)
             f.isdir = tostring(under_cursor_file.cha.is_dir)
@@ -155,11 +164,11 @@ local auto_generate_key = ya.sync(function(state)
     -- if input_key is empty, auto find a key to bind from begin SUPPORTED_KEYS
     local find = false
     local auto_assign_key
-    for i, key in ipairs(SUPPORTED_KEYS) do
+    for _, key in ipairs(SUPPORTED_KEYS) do
         if find then
             break
         end
-        for y, cand in ipairs(state.bookmarks) do
+        for _, cand in ipairs(state.bookmarks) do
             if key == cand.on then
                 goto continue
             end
@@ -183,7 +192,7 @@ local assign_key =ya.sync(function(state, input_key)
         return nil
     end
 
-    for y, cand in ipairs(state.bookmarks) do
+    for _, cand in ipairs(state.bookmarks) do
         if input_key == cand.on then
             keyset_notify("assign fail, key has been used")
             return nil
@@ -199,7 +208,7 @@ local function get_bind_key()
         pos = { "top-center", y = 3, w = 40 },
     })
     if event == 1 and key_set ~= "" then
-        local key_set = assign_key(key_set)
+        key_set = assign_key(key_set)
         if key_set == nil then
             return get_bind_key()
         else
