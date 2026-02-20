@@ -148,37 +148,40 @@ end
 
 M.shell = function(state)
 	local cwd = state.cwd
-	if cwd:match("^sftp://") then
-		ya.notify({
-			title = "Shell",
-			content = "Only supported in local directory",
-			timeout = 2,
-			level = "warn",
-		})
-		return
-	end
 	local title = "Shell"
+	local domain
+	if cwd:match("^sftp://") then
+		domain = Url(cwd).domain
+		title = title .. " (" .. domain .. ")"
+		cwd = tostring(Url(cwd).path)
+	end
 	local value, event = ya.input({
 		realtime = false,
 		title = title .. ":",
-		pos = { "hovered", w = 50, x = 13, y = 1 },
+		pos = { "top-center", w = 50, x = 0, y = 2 },
 	})
 	if event == 1 then
-		if #state.selected == 0 then
+		if #state.selected == 0 and state.hovered then
 			state.selected = { state.hovered }
 		end
-		local child = Command("/bin/zsh")
-			:arg({ "-lic", value, state.hovered })
-			:arg(state.selected)
-			:cwd(cwd)
-			:stdout(Command.PIPED)
-			:stderr(Command.PIPED)
+		local child
+		if domain then
+			child = Command("/usr/bin/ssh")
+				:arg({ domain, "cd", cwd, ";" })
+				:arg({ value, state.hovered and tostring(Url(state.hovered).path) or "" })
+			for _, file in pairs(state.selected) do
+				child:arg({ tostring(Url(file).path) })
+			end
+		else
+			child = Command("/bin/zsh"):arg({ "-lic", value, state.hovered }):arg(state.selected):cwd(cwd)
+		end
+		child:stdout(Command.PIPED):stderr(Command.PIPED)
 		local output = child:output()
 		ya.dbg(output)
 		if output then
 			local stdout = output.stdout:gsub("\n$", "")
 			local stderr = output.stderr:gsub("\n$", "")
-			local status = output.status
+			local status = output.status.code
 			if status ~= 0 and stderr ~= "" then
 				ya.notify({ title = title .. " Error", content = stderr, timeout = 2, level = "error" })
 			elseif stdout ~= "" then
