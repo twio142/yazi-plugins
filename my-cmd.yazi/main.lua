@@ -34,10 +34,6 @@ M.on_selection = function(mode)
 		ya.emit("escape", {})
 	end
 	if mode == "copy" or mode == "copy-force" then
-		ps.sub("duplicate", function(body)
-			ya.emit("reveal", { body.items[1].to })
-			ps.unsub("duplicate")
-		end)
 		if is_dir then
 			ya.emit("enter", {})
 		end
@@ -46,10 +42,6 @@ M.on_selection = function(mode)
 		ya.emit("unyank", {})
 		ya.emit("escape", {})
 	elseif mode == "move" or mode == "move-force" then
-		ps.sub("move", function(body)
-			ya.emit("reveal", { body.items[1].to })
-			ps.unsub("move")
-		end)
 		if is_dir then
 			ya.emit("enter", {})
 		end
@@ -256,6 +248,12 @@ return {
 			for _, item in ipairs(body) do
 				ya.emit("toggle", { item, state = "on" })
 			end
+		end)
+		ps.sub("duplicate", function(body)
+			ya.emit("reveal", { body.items[1].to })
+		end)
+		ps.sub("move", function(body)
+			ya.emit("reveal", { body.items[1].to })
 		end)
 	end,
 	entry = function(_, job)
