@@ -5,6 +5,8 @@ _G.cx = _G.cx or {}
 local M = {}
 
 local cache_file = "/tmp/yazi_oil"
+local shell_out = "/tmp/yazi_shell_out"
+local shell_err = "/tmp/yazi_shell_err"
 local is_linux = ya.target_os() == "linux"
 local stat_cmd = is_linux and "stat -c '%i'" or "stat -f '%i'"
 local trash_dir = is_linux and "~/.local/share/Trash/files" or "~/.Trash"
@@ -173,7 +175,7 @@ M.shell = function(state)
 				child:arg({ tostring(Url(file).path) })
 			end
 		else
-			child = Command("/bin/zsh"):arg({ "-lic", value, state.hovered }):arg(state.selected):cwd(cwd)
+			child = Command(os.getenv("SHELL") or "/bin/zsh"):arg({ "-lic", value, state.hovered }):arg(state.selected):cwd(cwd)
 		end
 		child:stdout(Command.PIPED):stderr(Command.PIPED)
 		local output = child:output()
@@ -188,6 +190,52 @@ M.shell = function(state)
 				ya.notify({ title = title, content = stdout, timeout = 2 })
 			end
 		end
+	end
+end
+
+M.shell_block = function()
+	local value, event = ya.input({
+		realtime = false,
+		title = "Shell: 󰞌",
+		pos = { "top-center", w = 50, x = 0, y = 2 },
+	})
+	if event == 1 then
+		local script = "/tmp/yazi_shell.sh"
+		local f = io.open(script, "w")
+		if not f then
+			return
+		end
+		f:write(value)
+		f:close()
+		ya.emit("shell", {
+			([[$SHELL -li %s "$@" >%s 2>%s; ya emit plugin oil shell_notify]]):format(
+				script,
+				shell_out,
+				shell_err
+			),
+			block = true,
+		})
+	end
+end
+
+M.shell_notify = function()
+	local function read_file(path)
+		local f = io.open(path, "r")
+		if not f then
+			return nil
+		end
+		local content = f:read("*a")
+		f:close()
+		os.remove(path)
+		return content ~= "" and content:gsub("\n$", "") or nil
+	end
+
+	local stdout = read_file(shell_out)
+	local stderr = read_file(shell_err)
+	if stderr then
+		ya.notify({ title = "Shell Error", content = stderr, timeout = 5, level = "error" })
+	elseif stdout then
+		ya.notify({ title = "Shell", content = stdout, timeout = 5 })
 	end
 end
 
