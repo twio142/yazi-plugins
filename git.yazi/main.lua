@@ -191,13 +191,15 @@ local function setup(st, opts)
 		local url = self._file.url
 		local repo = st.dirs[tostring(url.base or url.parent)]
 		local code = CODES.unknown
-		if repo then
+		if repo == CODES.excluded then
+			code = CODES.ignored
+		elseif repo then
 			local real_url = tostring(url.path)
 			real_url = real_url:sub(#repo + 2)
 			while real_url:find("[^/]+/%.%./") do
 				real_url = real_url:gsub("[^/]+/%.%./", "")
 			end
-			code = repo == CODES.excluded and CODES.ignored or st.repos[repo][real_url] or CODES.clean
+			code = st.repos[repo][real_url] or CODES.clean
 		end
 
 		if signs[code] == "" then
