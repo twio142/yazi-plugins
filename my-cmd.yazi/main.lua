@@ -80,7 +80,7 @@ M.on_selection = function(mode)
 		if os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
 			ya.emit("shell", { 'nvr -cc quit "$@"' })
 		elseif os.getenv("TMUX_POPUP") then
-			local cmd = 'SESS=$TMUX_ORIG_SESS tmux-edit "$@"; [ -z $TMUX_ORIG_CLIENT ] && tmux popup -C || tmux popup -c $TMUX_ORIG_CLIENT -C'
+			local cmd = 'SESS=$TMUX_ORIG_SESS tmux-edit "$@"; ya emit quit'
 			ya.emit("shell", { cmd })
 		else
 			ya.emit("open", {})
@@ -117,7 +117,7 @@ M.on_selection = function(mode)
 		})
 	elseif mode == "enter" then
 		if os.getenv("TMUX_POPUP") then
-			ya.emit("shell", { 'SESS=$TMUX_ORIG_SESS tmux-edit "$@"; [ -z $TMUX_ORIG_CLIENT ] && tmux popup -C || tmux popup -c $TMUX_ORIG_CLIENT -C' })
+			ya.emit("shell", { 'SESS=$TMUX_ORIG_SESS tmux-edit "$@"; ya emit quit' })
 		elseif os.getenv("NVIM") then
 			ya.emit("shell", { 'nvr -cc quit "$@"' })
 		else
@@ -145,7 +145,7 @@ M.smart = function(arg)
 				ya.emit("open", { hovered = true })
 			end
 		elseif os.getenv("TMUX_POPUP") then
-			local cmd = 'SESS=$TMUX_ORIG_SESS tmux-run %s "$1"; [ -z $TMUX_ORIG_CLIENT ] && tmux popup -C || tmux popup -c $TMUX_ORIG_CLIENT -C'
+			local cmd = 'SESS=$TMUX_ORIG_SESS tmux-run %s "$1"; ya emit quit'
 			if h.cha.is_dir then
 				cmd = cmd:format("cd")
 			elseif is_code(h) then
@@ -167,9 +167,9 @@ M.smart = function(arg)
 		local h = cx.active.current.hovered
 		local cmd
 		if h.cha.is_dir and tostring(h.url):match("^sftp://") then
-			cmd = string.format([[tmux neww -t $TMUX_ORIG_SESS: 'ssh %s -t "cd %s && \$SHELL -l"'; [ -z $TMUX_ORIG_CLIENT ] && tmux popup -C || tmux popup -c $TMUX_ORIG_CLIENT -C]], h.url.domain, ya.quote(tostring(h.url.path)))
+			cmd = string.format([[tmux neww -t $TMUX_ORIG_SESS: 'ssh %s -t "cd %s && \$SHELL -l"'; [ -z $TMUX_POPUP ] || ya emit quit]], h.url.domain, ya.quote(tostring(h.url.path)))
 		else
-			cmd = string.format('NEWW=1 SESS=$TMUX_ORIG_SESS tmux-run %s "$1"; [ -z $TMUX_ORIG_CLIENT ] && tmux popup -C || tmux popup -c $TMUX_ORIG_CLIENT -C', h.cha.is_dir and "cd" or "nvim")
+			cmd = string.format('NEWW=1 SESS=$TMUX_ORIG_SESS tmux-run %s "$1"; [ -z $TMUX_POPUP ] || ya emit quit', h.cha.is_dir and "cd" or "nvim")
 		end
 		ya.emit("shell", { cmd })
 	elseif arg == "esc" then
@@ -208,30 +208,30 @@ M.smart = function(arg)
 		if h.cha.is_dir and os.getenv("TMUX") then
 			local cmd
 			if tostring(h.url):match("^sftp://") then
-				cmd = string.format([[tmux splitw -t $TMUX_ORIG_SESS: -v 'ssh %s -t "cd %s && \$SHELL -l"'; [ -z $TMUX_ORIG_CLIENT ] && tmux popup -C || tmux popup -c $TMUX_ORIG_CLIENT -C]], h.url.domain, ya.quote(tostring(h.url.path)))
+				cmd = string.format([[tmux splitw -t $TMUX_ORIG_SESS: -v 'ssh %s -t "cd %s && \$SHELL -l"'; [ -z $TMUX_POPUP ] || ya emit quit]], h.url.domain, ya.quote(tostring(h.url.path)))
 			else
-				cmd = 'tmux splitw -t $TMUX_ORIG_SESS: -v -c "$1"; [ -z $TMUX_ORIG_CLIENT ] && tmux popup -C || tmux popup -c $TMUX_ORIG_CLIENT -C'
+				cmd = 'tmux splitw -t $TMUX_ORIG_SESS: -v -c "$1"; [ -z $TMUX_POPUP ] || ya emit quit'
 			end
 			ya.emit("shell", { cmd })
 		elseif os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
 			ya.emit("shell", { 'nvr -cc quit -cc split "$1"' })
 		elseif os.getenv("TMUX") then
-			ya.emit("shell", { 'tmux splitw -t $TMUX_ORIG_SESS: -v "nvim "$1""; [ -z $TMUX_ORIG_CLIENT ] && tmux popup -C || tmux popup -c $TMUX_ORIG_CLIENT -C' })
+			ya.emit("shell", { 'tmux splitw -t $TMUX_ORIG_SESS: -v "nvim "$1""; [ -z $TMUX_POPUP ] || ya emit quit' })
 		end
 	elseif arg == "vsplit" then
 		local h = cx.active.current.hovered
 		if h.cha.is_dir and os.getenv("TMUX") then
 			local cmd
 			if tostring(h.url):match("^sftp://") then
-				cmd = string.format([[tmux splitw -t $TMUX_ORIG_SESS: -h 'ssh %s -t "cd %s && \$SHELL -l"'; [ -z $TMUX_ORIG_CLIENT ] && tmux popup -C || tmux popup -c $TMUX_ORIG_CLIENT -C]], h.url.domain, ya.quote(tostring(h.url.path)))
+				cmd = string.format([[tmux splitw -t $TMUX_ORIG_SESS: -h 'ssh %s -t "cd %s && \$SHELL -l"'; [ -z $TMUX_POPUP ] || ya emit quit]], h.url.domain, ya.quote(tostring(h.url.path)))
 			else
-				cmd = 'tmux splitw -t $TMUX_ORIG_SESS: -h -c "$1"; [ -z $TMUX_ORIG_CLIENT ] && tmux popup -C || tmux popup -c $TMUX_ORIG_CLIENT -C'
+				cmd = 'tmux splitw -t $TMUX_ORIG_SESS: -h -c "$1"; [ -z $TMUX_POPUP ] || ya emit quit'
 			end
 			ya.emit("shell", { cmd })
 		elseif os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
 			ya.emit("shell", { 'nvr -cc quit -cc vsplit "$1"' })
 		elseif os.getenv("TMUX") then
-			ya.emit("shell", { 'tmux splitw -t $TMUX_ORIG_SESS: -h "nvim "$1""; [ -z $TMUX_ORIG_CLIENT ] && tmux popup -C || tmux popup -c $TMUX_ORIG_CLIENT -C' })
+			ya.emit("shell", { 'tmux splitw -t $TMUX_ORIG_SESS: -h "nvim "$1""; [ -z $TMUX_POPUP ] || ya emit quit' })
 		end
 	elseif arg == "copy-path" then
 		local path = tostring(cx.active.current.hovered.url.path)
