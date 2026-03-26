@@ -132,23 +132,19 @@ M.fd = function(s)
 	end
 	if #files == 1 then
 		local file = Url(cwd):join(files[1])
-		local cha, err = fs.cha(file, true)
-		if err then
-			return
-		end
-		ya.emit(cha.is_dir and "cd" or "reveal", { file })
+		ya.emit("reveal", { file })
 	elseif #files > 1 then
 		if files[1] == "back" then
 			M.zoxide({ cwd = os.getenv("PWD"), query = s.query })
 			return
 		end
-		local last_file
-		for _, file in ipairs(files) do
-			file = Url(cwd):join(file)
+		for i, file in ipairs(files) do
+			file = tostring(Url(cwd):join(file))
 			ya.emit("toggle", { file, state = "on" })
-			last_file = file
+			if i == #files then
+				ya.emit("reveal", { file })
+			end
 		end
-		ya.emit("reveal", { last_file })
 	end
 end
 
@@ -202,13 +198,13 @@ M.grep = function(s)
 			M.zoxide({ cwd = os.getenv("PWD"), query = s.query })
 			return
 		end
-		local last_file
-		for _, file in ipairs(files) do
-			file = Url(cwd):join(file)
+		for i, file in ipairs(files) do
+			file = tostring(Url(cwd):join(file))
 			ya.emit("toggle", { file, state = "on" })
-			last_file = file
+			if i == #files then
+				ya.emit("reveal", { file })
+			end
 		end
-		ya.emit("reveal", { last_file })
 	end
 end
 
