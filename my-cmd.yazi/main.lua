@@ -1,4 +1,4 @@
---- @since 25.12.29
+--- @since 26.04.03
 --- @sync entry
 --- @diagnostic disable: undefined-global
 _G.ya = _G.ya or {}
@@ -27,11 +27,6 @@ M.on_selection = function(mode)
 	end
 	if not first then
 		return
-	end
-	local function locate()
-		ya.emit("reveal", { (is_dir and h.url or h.url.parent):join(first) })
-		ya.emit("unyank", {})
-		ya.emit("escape", {})
 	end
 	if mode == "copy" or mode == "copy-force" then
 		if is_dir then
@@ -73,7 +68,6 @@ M.on_selection = function(mode)
 				follow = true,
 			}
 		)
-		locate()
 	elseif mode == "delete" then
 		ya.emit("remove", {})
 	elseif mode == "edit" then
@@ -248,12 +242,6 @@ return {
 			for _, item in ipairs(body) do
 				ya.emit("toggle", { item, state = "on" })
 			end
-		end)
-		ps.sub("duplicate", function(body)
-			ya.emit("reveal", { body.items[1].to })
-		end)
-		ps.sub("move", function(body)
-			ya.emit("reveal", { body.items[1].to })
 		end)
 	end,
 	entry = function(_, job)
