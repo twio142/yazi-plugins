@@ -7,6 +7,10 @@ local OFF = "\x1b[0m"
 
 M.zoxide = function(s)
 	local cwd = s.cwd
+	if cwd:match("^sftp://") then
+		M.zoxide_remote(s)
+		return
+	end
 	if not s.query then
 		ui.hide()
 	end
@@ -57,6 +61,36 @@ M.zoxide = function(s)
 		M.grep({ cwd = lines[2], query = lines[3] })
 	elseif lines[1] == "tab" then
 		ya.emit("tab_create", { lines[2] })
+	end
+end
+
+M.zoxide_remote = function(s)
+	local cwd = s.cwd
+	if not cwd:match("^sftp://") then
+		return
+	end
+	local domain = Url(cwd).domain
+	local value, event = ya.input({
+		realtime = false,
+		title = ("zoxide (%s):"):format(domain),
+		pos = { "top-center", w = 50, x = 0, y = 2 },
+	})
+	if event == 1 and value ~= "" then
+		local child = Command("/usr/bin/ssh")
+			:arg({ domain, "zoxide", "query", value })
+			:stdout(Command.PIPED)
+			:stderr(Command.PIPED)
+		local output = child:output()
+		if output then
+			local stdout = output.stdout:gsub("\n$", "")
+			local stderr = output.stderr:gsub("\n$", "")
+			local status = output.status.code
+			if status ~= 0 and stderr ~= "" then
+				ya.notify({ title = "zoxide", content = stderr, timeout = 2, level = "error" })
+			elseif stdout ~= "" then
+				ya.emit("cd", { ("sftp://%s/%s"):format(domain, stdout) })
+			end
+		end
 	end
 end
 
