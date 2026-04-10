@@ -5,6 +5,7 @@
 - `smart`: smart actions
     - `enter`: open shell in directory / open file in editor
     - `open-neww`: open in new tmux window
+    - `cd`: open shell in cwd
     - `esc`: unyank / escape
     - `up` / `down`: rotate when hitting top / bottom
     - `parent-up` / `parent-down`: Go up / down in the parent directory
