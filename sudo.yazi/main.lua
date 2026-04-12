@@ -51,10 +51,11 @@ local function get_password()
 end
 
 local function sudo_run(password, args)
-	local child, err = Command("sudo"):arg({ "-S" }):arg(args):stdin(Command.PIPED):stderr(Command.PIPED):spawn()
+	local child, err =
+		Command("sudo"):arg({ "-S" }):arg(args):stdin(Command.PIPED):stdout(Command.PIPED):stderr(Command.PIPED):spawn()
 	if not child then
 		ya.notify({ title = "Sudo", content = tostring(err), timeout = 2, level = "error" })
-		return false
+		return nil
 	end
 	child:write_all(password .. "\n")
 	child:flush()
@@ -62,9 +63,9 @@ local function sudo_run(password, args)
 	if not output or not output.status.success then
 		local msg = output and output.stderr ~= "" and output.stderr:gsub("\n$", "") or "Command failed"
 		ya.notify({ title = "Sudo", content = msg, timeout = 5, level = "error" })
-		return false
+		return nil
 	end
-	return true
+	return output.stdout
 end
 
 function M.copy(force)
@@ -185,6 +186,41 @@ function M.rename()
 	end
 	local dest = state.hovered_parent .. "/" .. new_name
 	if sudo_run(password, { "mv", state.hovered, dest }) then
+		ya.emit("reload", {})
+	end
+end
+
+function M.shell()
+	local state = get_state()
+	local value, event = ya.input({
+		realtime = false,
+		title = "Sudo Shell:",
+		pos = { "top-center", w = 50, x = 0, y = 2 },
+	})
+	if event ~= 1 then
+		return
+	end
+	local password = get_password()
+	if not password then
+		return
+	end
+	if #state.selected == 0 and state.hovered then
+		state.selected = { state.hovered }
+	end
+	local shell_path = os.getenv("SHELL") or "/bin/zsh"
+	local args = { shell_path, "-c", value }
+	if state.hovered then
+		table.insert(args, state.hovered)
+	end
+	for _, f in ipairs(state.selected) do
+		table.insert(args, f)
+	end
+	local stdout = sudo_run(password, args)
+	if stdout ~= nil then
+		local out = stdout:gsub("\n$", "")
+		if out ~= "" then
+			ya.notify({ title = "Sudo Shell", content = out, timeout = 2 })
+		end
 		ya.emit("reload", {})
 	end
 end

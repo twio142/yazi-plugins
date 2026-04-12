@@ -12,6 +12,7 @@ Operates on selected files across all tabs and yanked files.
 - `symlink`: `sudo ln -s`
 - `hardlink`: `sudo ln`
 - `rename`: prompts for a new name, then `sudo mv`
+- `shell`: prompts for a shell command, runs it via `sudo $SHELL -c <cmd>` with hovered/selected files as arguments
 
 ## Usage
 
@@ -23,5 +24,6 @@ prepend_keymap = [
   { on = ["s", "d"], run = "plugin sudo remove",      desc = "Sudo remove" },
   { on = ["s", "l"], run = "plugin sudo symlink",     desc = "Sudo symlink" },
   { on = ["s", "r"], run = "plugin sudo rename",      desc = "Sudo rename" },
+  { on = ["s", "s"], run = "plugin sudo shell",       desc = "Sudo shell" },
 ]
 ```
