@@ -10,6 +10,8 @@
     - Search files with git status (untracked, modified, staged, etc.)
 - `prev_change` & `next_change`
     - Jump to previous/next changed file in the current tab
+- `edit_symlink`
+    - Edit the target of a symlink, with the input pre-filled with the current target
 
 ## Usage
 
@@ -22,8 +24,9 @@ prepend_keys = [
   { on = "f",        run = "plugin advanced-search filter",       desc = "Filter" },
   { on = "F",        run = "plugin advanced-search smart_filter", desc = "Smart filter" },
   { on = ["g", "/"], run = "plugin advanced-search git_search",   desc = "Git search" },
-  { on = ["[", "c"], run = "plugin advanced-search prev_change", desc = "Previous git change" },
-  { on = ["]", "c"], run = "plugin advanced-search next_change", desc = "Next git change" },
+  { on = ["[", "c"], run = "plugin advanced-search prev_change",  desc = "Previous git change" },
+  { on = ["]", "c"], run = "plugin advanced-search next_change",  desc = "Next git change" },
+  { on = "R",        run = "plugin advanced-search edit_symlink", desc = "Edit symlink target" },
   # ...
 ]
 

@@ -39,6 +39,7 @@ local hovered = ya.sync(function()
 		url = h.url,
 		is_dir = h.cha.is_dir,
 		unique = #cx.active.current.files == 1,
+		link_to = h.link_to,
 	}
 end)
 
@@ -142,7 +143,10 @@ function M.git_changes()
 			changed_files[i] = File({ url = url, cha = fs.cha(url, true) })
 		end
 		ya.emit("update_files", { op = fs.op("part", { id = id, url = Url(cwd), files = changed_files }) })
-		ya.emit("update_files", { op = fs.op("done", { id = id, url = cwd, cha = Cha({ mode = tonumber("100644", 8) }) }) })
+		ya.emit(
+			"update_files",
+			{ op = fs.op("done", { id = id, url = cwd, cha = Cha({ mode = tonumber("100644", 8) }) }) }
+		)
 	else
 		ya.notify({ title = "Git changes", content = "No changed files", timeout = 4 })
 	end
@@ -180,11 +184,7 @@ local function find_tag(prev)
 	local ctx = get_ctx()
 	local files = ctx.files
 	local cursor = ctx.cursor
-	local child = Command("tag")
-		:arg({ "-f", "*", "." })
-		:cwd(tostring(ctx.cwd))
-		:stdout(Command.PIPED)
-		:spawn()
+	local child = Command("tag"):arg({ "-f", "*", "." }):cwd(tostring(ctx.cwd)):stdout(Command.PIPED):spawn()
 	local map = {}
 	while true do
 		local line, event = child:read_line()
@@ -222,6 +222,39 @@ end
 
 function M.next_tag()
 	find_tag(false)
+end
+
+function M.edit_symlink()
+	local h = hovered()
+	if not h.url then
+		return
+	end
+	if not h.link_to then
+		ya.notify({ title = "Edit symlink", content = "Not a symlink", timeout = 2 })
+		return
+	end
+
+	local value, event = ya.input({
+		title = "Symlink target:",
+		value = tostring(h.link_to),
+		pos = { "hovered", w = 50, x = 13, y = 1 },
+	})
+
+	if event ~= 1 or value == "" or value == tostring(h.link_to) then
+		return
+	end
+
+	local child, err = Command("ln"):arg({ "-sf", value, tostring(h.url) }):spawn()
+	if not child then
+		ya.notify({ title = "Edit symlink", content = tostring(err), timeout = 5 })
+		return
+	end
+	local status = child:wait()
+	if not status or not status.success then
+		ya.notify({ title = "Edit symlink", content = "Failed to update symlink", timeout = 5 })
+		return
+	end
+	ya.emit("reload", {})
 end
 
 return {
