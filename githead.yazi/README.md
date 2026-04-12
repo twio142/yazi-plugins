@@ -18,7 +18,7 @@ All supported features are listed [here](#features)
 ## Installation
 
 ```sh
-ya pack -a llanosrocas/githead
+ya pkg add llanosrocas/githead
 ```
 
 Or manually copy `init.lua` to the `~/.config/yazi/plugins/githead.yazi/init.lua`
