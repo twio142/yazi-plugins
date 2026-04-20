@@ -97,12 +97,7 @@ end
 M.fd = function(s)
 	local cwd = s.cwd
 	if cwd:match("^sftp://") then
-		ya.notify({
-			title = "FZF",
-			content = "Only supported in local directory",
-			timeout = 2,
-			level = "warn",
-		})
+		M.fd_remote(s)
 		return
 	end
 	if not s.query then
@@ -178,6 +173,51 @@ M.fd = function(s)
 			if i == #files then
 				ya.emit("reveal", { file })
 			end
+		end
+	end
+end
+
+M.fd_remote = function(s)
+	local cwd = s.cwd
+	if not cwd:match("^sftp://") then
+		return
+	end
+	local cwd_url = Url(cwd)
+	local child = Command("/usr/bin/ssh")
+		:arg({ cwd_url.domain, "cd", tostring(cwd_url.path), "&&" })
+		:arg({ "fd" })
+		:stdout(Command.PIPED)
+		:stderr(Command.PIPED)
+	local output = child:output()
+	if output then
+		local stdout = output.stdout:gsub("\n$", "")
+		local stderr = output.stderr:gsub("\n$", "")
+		local status = output.status.code
+		if status ~= 0 and stderr ~= "" then
+			ya.notify({ title = "fd", content = stderr, timeout = 2, level = "error" })
+		elseif stdout == "" then
+			ya.notify({ title = "fd", content = "No file found", timeout = 2, level = "info" })
+		else
+			ui.hide()
+			local fzf = Command("fzf"):arg({ "-m" }):stdin(Command.PIPED):stdout(Command.PIPED):spawn()
+			fzf:write_all(stdout)
+			fzf:flush()
+			fzf:wait()
+			local selected = {}
+			while true do
+				local line, ev = fzf:read_line()
+				if ev ~= 0 then
+					break
+				end
+				line = line:gsub("\n", "")
+				table.insert(selected, cwd .. "/" .. line)
+			end
+			if #selected > 1 then
+				for _, path in ipairs(selected) do
+					ya.emit("toggle", { path, state = "on" })
+				end
+			end
+			ya.emit("reveal", { selected[#selected] })
 		end
 	end
 end
