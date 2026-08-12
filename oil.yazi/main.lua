@@ -5,10 +5,45 @@ _G.cx = _G.cx or {}
 
 local M = {}
 
-local cache_file = "/tmp/yazi_oil"
-local is_linux = ya.target_os() == "linux"
-local stat_cmd = is_linux and "stat -c '%i'" or "stat -f '%i'"
-local trash_dir = is_linux and "~/.local/share/Trash/files" or "~/.Trash"
+-- Items trashed by the last `delete`, kept as plain strings so they survive the
+-- async/sync boundary. `put` moves them back out.
+local stash = ya.sync(function(st, items)
+	if items ~= nil then
+		st.trashed = items
+	end
+	return st.trashed or {}
+end)
+
+-- Trash entries are keyed by their backing path, which is unique per item --
+-- the trash renames colliding names ("a.txt", "a 2.txt"). Diffing the backing
+-- set before/after a removal therefore identifies exactly the batch we just
+-- trashed, even when several items share one original path.
+local function backing_set()
+	local entries, err = fs.trash.list()
+	if not entries then
+		return nil, err
+	end
+	local set = {}
+	for _, e in ipairs(entries) do
+		set[tostring(e.backing)] = true
+	end
+	return set
+end
+
+local function trashed_since(before)
+	local entries, err = fs.trash.list()
+	if not entries then
+		return nil, err
+	end
+	local added = {}
+	for _, e in ipairs(entries) do
+		local backing = tostring(e.backing)
+		if not before[backing] then
+			added[#added + 1] = { backing = backing, name = tostring(e.name), is_dir = e.cha.is_dir }
+		end
+	end
+	return added
+end
 
 M.delete = function(state)
 	if state.cwd:match("^sftp://") then
@@ -23,20 +58,34 @@ M.delete = function(state)
 		title = title,
 		body = ui.Text(body):align(ui.Align.LEFT),
 	})
-	if confirmed then
-		ya.emit("shell", {
-			([=[
-				cache="%s"
-				rm -f "$cache"
+	if not confirmed then
+		return
+	end
 
-				for file in "$@"; do
-					inode=$(%s "$file")
-					[ -n "$inode" ] && echo "$inode	$(basename "$file")" >> "$cache"
-				done
-				ya emit remove --force
-				ya emit unyank
-				ya emit escape
-			]=]):format(cache_file, stat_cmd),
+	local before, err = backing_set()
+	if not before then
+		ya.notify({ title = "Trash", content = "Cannot read trash: " .. tostring(err), level = "error", timeout = 5 })
+		return
+	end
+
+	ya.emit("remove", { force = true })
+	ya.emit("unyank", {})
+	ya.emit("escape", {})
+
+	-- `remove` is queued as a background task, so poll until the new entries land.
+	local added, deadline = {}, ya.time() + 5
+	repeat
+		ya.sleep(0.05)
+		added = trashed_since(before) or added
+	until #added >= count or ya.time() > deadline
+
+	stash(added)
+	if #added < count then
+		ya.notify({
+			title = "Trash",
+			content = ("Only %d of %d item%s reached the trash"):format(#added, count, count > 1 and "s" or ""),
+			level = "warn",
+			timeout = 4,
 		})
 	end
 end
@@ -48,70 +97,58 @@ M.put = function(state)
 		return
 	end
 
-	local scpt = ([=[
-      cache="%s"
-      [ -f "$cache" ] || { ya emit paste; ya emit unyank; exit 0; }
+	local items = stash()
+	if #items == 0 then
+		ya.emit("paste", {})
+		ya.emit("unyank", {})
+		return
+	end
 
-      trash_dir=%s
-      [ -d "$trash_dir" ] || { ya emit paste; ya emit unyank; exit 0; }
+	local target_dir
+	if state.hovered then
+		target_dir = state.hovered_is_dir and Url(state.hovered) or Url(state.hovered).parent
+	else
+		target_dir = Url(state.cwd)
+	end
 
-      while read -r line; do
-        IFS=$'\t' read -r inode name <<< "$line"
-        file=$(find "$trash_dir" -inum "$inode" 2>/dev/null | head -n 1)
-				[ -n "$file" ] && echo "$name	$file" || echo "$name	"
-      done < "$cache"
-    ]=]):format(cache_file, trash_dir)
-	local child = Command("/bin/zsh"):arg({ "-lc", scpt }):stdout(Command.PIPED):spawn()
-	local files = {}
-	local not_found = {}
-	while true do
-		local line, event = child:read_line()
-		if event ~= 0 then
-			break
-		end
-		line = line:gsub("\n", "")
-		local name, path = line:match("([^\t]*)\t(.*)")
-		if path ~= "" then
-			table.insert(files, { file = Url(path), name = name })
+	local first, failed = nil, {}
+	for _, it in ipairs(items) do
+		local from = Url(it.backing)
+		if not fs.cha(from) then
+			failed[#failed + 1] = it.name
 		else
-			table.insert(not_found, name)
+			local target = fs.unique(it.is_dir and "dir" or "file", target_dir:join(it.name))
+			local ok = fs.rename(from, target)
+			if not ok then
+				-- `rename` can't cross filesystems; fall back to a real move.
+				local status = Command("mv"):arg({ tostring(from), tostring(target) }):spawn():wait()
+				ok = status and status.code == 0
+			end
+			if ok then
+				first = first or target
+			else
+				failed[#failed + 1] = it.name
+			end
 		end
 	end
-	if #not_found > 0 then
+
+	stash({})
+
+	if #failed > 0 then
 		ya.notify({
-			title = "Files not found in trash:",
-			content = table.concat(not_found, "\n"),
+			title = "Files not recovered from trash:",
+			content = table.concat(failed, "\n"),
 			level = "warn",
-			timeout = 2,
+			timeout = 3,
 		})
 	end
-	if #files > 0 then
-		local target_dir
-		if state.hovered then
-			target_dir = state.hovered_is_dir and Url(state.hovered) or Url(state.hovered).parent
-		else
-			target_dir = Url(state.cwd)
-		end
-
-		local first
-		for _, f in pairs(files) do
-			local is_dir = fs.cha(f.file).is_dir
-			local target = fs.unique(is_dir and "dir" or "file", target_dir:join(f.name))
-			if is_dir then
-				Command(is_linux and "mv" or "gmv"):arg({ "-T", tostring(f.file), tostring(target) }):spawn():wait()
-			else
-				fs.copy(f.file, target)
-			end
-			if not first then
-				first = target
-			end
-		end
+	if first then
 		ya.emit("reveal", { first })
 	end
 end
 
 M.yank = function()
-	ya.emit("shell", { "rm -f " .. cache_file })
+	stash({})
 	ya.emit("yank", {})
 end
 
@@ -178,7 +215,7 @@ M.shell = function(state)
 				:arg({ "-lic", value, state.hovered })
 				:arg(state.selected)
 				:cwd(cwd)
-			  :env("YAZI_OIL", "1")
+				:env("YAZI_OIL", "1")
 		end
 		child:stdout(Command.PIPED):stderr(Command.PIPED)
 		local output = child:output()
