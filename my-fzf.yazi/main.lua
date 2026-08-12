@@ -1,4 +1,4 @@
---- @since 25.2.26
+--- @since 26.08.11
 --- @diagnostic disable: undefined-global
 
 local M = {}
@@ -69,7 +69,7 @@ M.zoxide_remote = function(s)
 	if not cwd:match("^sftp://") then
 		return
 	end
-	local domain = Url(cwd).domain
+	local domain = Url(cwd).spec.domain
 	local value, event = ya.input({
 		realtime = false,
 		title = ("zoxide (%s):"):format(domain),
@@ -184,7 +184,7 @@ M.fd_remote = function(s)
 	end
 	local cwd_url = Url(cwd)
 	local child = Command("/usr/bin/ssh")
-		:arg({ cwd_url.domain, "cd", tostring(cwd_url.path), "&&" })
+		:arg({ cwd_url.spec.domain, "cd", tostring(cwd_url.path), "&&" })
 		:arg({ "fd" })
 		:stdout(Command.PIPED)
 		:stderr(Command.PIPED)
@@ -338,8 +338,8 @@ end
 
 local state = ya.sync(function()
 	local selected = {}
-	for _, url in pairs(cx.active.selected) do
-		table.insert(selected, tostring(url))
+	for _, file in pairs(cx.active.selected) do
+		table.insert(selected, tostring(file.url))
 	end
 	return {
 		cwd = tostring(cx.active.current.cwd),

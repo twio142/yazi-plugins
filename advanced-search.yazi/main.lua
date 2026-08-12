@@ -1,5 +1,5 @@
 ---@diagnostic disable: undefined-global
---- @since 25.12.29
+--- @since 26.08.11
 local M = {}
 
 local function prompt(title)
@@ -145,7 +145,7 @@ function M.git_changes()
 		ya.emit("update_files", { op = fs.op("part", { id = id, url = Url(cwd), files = changed_files }) })
 		ya.emit(
 			"update_files",
-			{ op = fs.op("done", { id = id, url = cwd, cha = Cha({ mode = tonumber("100644", 8) }) }) }
+			{ op = fs.op("done", { id = id, file = File({ url = cwd, cha = Cha({ mode = tonumber("100644", 8) }) }) }) }
 		)
 	else
 		ya.notify({ title = "Git changes", content = "No changed files", timeout = 4 })

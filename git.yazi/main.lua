@@ -1,4 +1,4 @@
---- @since 25.12.29
+--- @since 26.08.11
 
 local WINDOWS = ya.target_family() == "windows"
 
@@ -27,6 +27,29 @@ local PATTERNS = {
 	{ "U", CODES.updated },
 	{ "[AD][AD]", CODES.updated },
 }
+
+local function theme()
+	local t = th.git or {}
+	return {
+		[CODES.unknown] = t.unknown or ui.Style(),
+		[CODES.ignored] = t.ignored or ui.Style():fg("darkgray"),
+		[CODES.untracked] = t.untracked or ui.Style():fg("magenta"),
+		[CODES.modified] = t.modified or ui.Style():fg("yellow"),
+		[CODES.added] = t.added or ui.Style():fg("green"),
+		[CODES.deleted] = t.deleted or ui.Style():fg("red"),
+		[CODES.updated] = t.updated or ui.Style():fg("yellow"),
+		[CODES.clean] = t.clean or ui.Style(),
+	}, {
+		[CODES.unknown] = t.unknown_sign or "",
+		[CODES.ignored] = t.ignored_sign or " ",
+		[CODES.untracked] = t.untracked_sign or "? ",
+		[CODES.modified] = t.modified_sign or " ",
+		[CODES.added] = t.added_sign or " ",
+		[CODES.deleted] = t.deleted_sign or " ",
+		[CODES.updated] = t.updated_sign or " ",
+		[CODES.clean] = t.clean_sign or "",
+	}
+end
 
 ---@param line string
 ---@return CODES, string
@@ -161,27 +184,10 @@ local function setup(st, opts)
 	opts = opts or {}
 	opts.order = opts.order or 1500
 
-	local t = th.git or {}
-	local styles = {
-		[CODES.unknown] = t.unknown or ui.Style(),
-		[CODES.ignored] = t.ignored or ui.Style():fg("darkgray"),
-		[CODES.untracked] = t.untracked or ui.Style():fg("magenta"),
-		[CODES.modified] = t.modified or ui.Style():fg("yellow"),
-		[CODES.added] = t.added or ui.Style():fg("green"),
-		[CODES.deleted] = t.deleted or ui.Style():fg("red"),
-		[CODES.updated] = t.updated or ui.Style():fg("yellow"),
-		[CODES.clean] = t.clean or ui.Style(),
-	}
-	local signs = {
-		[CODES.unknown] = t.unknown_sign or "",
-		[CODES.ignored] = t.ignored_sign or " ",
-		[CODES.untracked] = t.untracked_sign or "? ",
-		[CODES.modified] = t.modified_sign or " ",
-		[CODES.added] = t.added_sign or " ",
-		[CODES.deleted] = t.deleted_sign or " ",
-		[CODES.updated] = t.updated_sign or " ",
-		[CODES.clean] = t.clean_sign or "",
-	}
+	local styles, signs = theme()
+	ps.sub("theme", function()
+		styles, signs = theme()
+	end)
 
 	Linemode:children_add(function(self)
 		if not self._file.in_current then
@@ -231,7 +237,6 @@ local function fetch(_, job)
 		:cwd(tostring(cwd.path))
 		:arg({ "--no-optional-locks", "-c", "core.quotePath=", "status", "--porcelain", "-unormal", "--no-renames", "--ignored=matching" })
 		:arg(paths)
-		:stdout(Command.PIPED)
 		:output()
 	if not output then
 		return true, Err("Cannot spawn `git` command, error: %s", err)
@@ -264,4 +269,14 @@ local function fetch(_, job)
 	return false
 end
 
-return { setup = setup, fetch = fetch }
+-- TODO: remove
+local function fetch_compact(self, job)
+	if ya.throttle then
+		fetch(self, job)
+		return require("noop"):fetch(job)
+	else
+		return fetch(self, job)
+	end
+end
+
+return { setup = setup, fetch = fetch_compact }

@@ -1,4 +1,5 @@
 --- @diagnostic disable: undefined-global
+--- @since 26.08.11
 _G.ya = _G.ya or {}
 _G.cx = _G.cx or {}
 
@@ -151,7 +152,7 @@ M.shell = function(state)
 	local title = "Shell"
 	local domain
 	if cwd:match("^sftp://") then
-		domain = Url(cwd).domain
+		domain = Url(cwd).spec.domain
 		title = title .. " (" .. domain .. ")"
 		cwd = tostring(Url(cwd).path)
 	end
@@ -209,18 +210,18 @@ M.shell_block = function()
 		end
 		f:write(value)
 		f:close()
-		ya.emit("shell", { ('YAZI_OIL=1 $SHELL -li %s "$@"'):format(script), block = true })
+		ya.emit("shell", { ('YAZI_OIL=1 $SHELL -li %s %%s'):format(script), block = true })
 	end
 end
 
 local state = ya.sync(function()
 	local selected = {}
-	for _, url in pairs(cx.active.selected) do
-		table.insert(selected, tostring(url))
+	for _, file in pairs(cx.active.selected) do
+		table.insert(selected, tostring(file.url))
 	end
 	local yanked = {}
-	for _, url in pairs(cx.yanked) do
-		table.insert(yanked, tostring(url))
+	for _, file in pairs(cx.yanked) do
+		table.insert(yanked, tostring(file.url))
 	end
 	return {
 		cwd = tostring(cx.active.current.cwd),

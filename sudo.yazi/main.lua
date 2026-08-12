@@ -1,4 +1,4 @@
---- @since 25.12.29
+--- @since 26.08.11
 --- @diagnostic disable: undefined-global
 
 local M = {}
@@ -6,27 +6,23 @@ local M = {}
 local get_state = ya.sync(function()
 	local h = cx.active.current.hovered
 	local selected = {}
-	for _, url in pairs(cx.active.selected) do
-		table.insert(selected, tostring(url))
-	end
-	for _, url in pairs(cx.yanked) do
-		if not cx.active.selected[tostring(url)] then
-			table.insert(selected, tostring(url))
+	local seen = {}
+	local push = function(file)
+		local s = tostring(file.url)
+		if not seen[s] then
+			seen[s] = true
+			table.insert(selected, s)
 		end
 	end
+	for _, file in pairs(cx.active.selected) do
+		push(file)
+	end
+	for _, file in pairs(cx.yanked) do
+		push(file)
+	end
 	for i = 1, #cx.tabs do
-		for _, url in pairs(cx.tabs[i].selected) do
-			local s = tostring(url)
-			local found = false
-			for _, existing in ipairs(selected) do
-				if existing == s then
-					found = true
-					break
-				end
-			end
-			if not found then
-				table.insert(selected, s)
-			end
+		for _, file in pairs(cx.tabs[i].selected) do
+			push(file)
 		end
 	end
 	return {

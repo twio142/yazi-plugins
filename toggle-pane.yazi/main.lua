@@ -1,8 +1,9 @@
---- @since 25.2.26
+--- @since 26.08.11
 --- @sync entry
 
 local function entry(st, job)
-	local R = rt.mgr.ratio
+	local ratio = rt.mgr.ratio
+	local R = { parent = ratio[1], current = ratio[2], preview = ratio[3] }
 	job = type(job) == "string" and { args = { job } } or job
 
 	st.parent = st.parent or R.parent
