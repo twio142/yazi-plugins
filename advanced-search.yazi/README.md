@@ -9,7 +9,11 @@
 - `git_changes`
     - Search files with git status (untracked, modified, staged, etc.)
 - `prev_change` & `next_change`
-    - Jump to previous/next changed file in the current tab
+    - Jump to previous/next changed file in the current folder
+- `prev_tag` & `next_tag`
+    - Jump to previous/next tagged file in the current folder; requires [`tag`](https://github.com/jdberry/tag/).
+- `prev_selected` & `next_selected`
+    - Jump to previous/next selected file in the current tab
 - `edit_symlink`
     - Edit the target of a symlink, with the input pre-filled with the current target
 

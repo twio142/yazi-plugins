@@ -40,6 +40,7 @@ local hovered = ya.sync(function()
 		is_dir = h.cha.is_dir,
 		unique = #cx.active.current.files == 1,
 		link_to = h.link_to,
+		selected = h:is_selected(),
 	}
 end)
 
@@ -95,10 +96,15 @@ local get_ctx = ya.sync(function()
 	for _, f in ipairs(current.files) do
 		table.insert(files, f.url)
 	end
+	local selected = {}
+	for _, f in pairs(cx.active.selected) do
+		table.insert(selected, f.url)
+	end
 	return {
 		cwd = current.cwd,
 		cursor = current.cursor,
 		files = files,
+		selected = selected,
 	}
 end)
 
@@ -222,6 +228,72 @@ end
 
 function M.next_tag()
 	find_tag(false)
+end
+
+local function find_selected(prev)
+	local ctx = get_ctx()
+	local selected = ctx.selected
+	local map = {}
+	for _, url in ipairs(selected) do
+		map[tostring(url)] = true
+	end
+	if #selected == 0 then
+		return
+	end
+	local files = ctx.files
+	local cursor = ctx.cursor
+	local h = hovered()
+	if prev then
+		for i = cursor, 1, -1 do
+			local f = files[i]
+			if map[tostring(f)] then
+				ya.emit("reveal", { f })
+				return
+			end
+		end
+		if h.selected then
+			for i = #selected, 1, -1 do
+				if selected[i] == h.url then
+					if i > 1 then
+						ya.emit("reveal", { selected[i - 1] })
+					else
+						ya.emit("reveal", { selected[#selected] })
+					end
+				end
+			end
+		else
+			ya.emit("reveal", { selected[#selected] })
+		end
+	else
+		for i = cursor + 2, #files, 1 do
+			local f = files[i]
+			if map[tostring(f)] then
+				ya.emit("reveal", { f })
+				return
+			end
+		end
+		if h.selected then
+			for i = 1, #selected, 1 do
+				if selected[i] == h.url then
+					if i < #selected then
+						ya.emit("reveal", { selected[i + 1] })
+					else
+						ya.emit("reveal", { selected[1] })
+					end
+				end
+			end
+		else
+			ya.emit("reveal", { selected[1] })
+		end
+	end
+end
+
+function M.prev_selected()
+	find_selected(true)
+end
+
+function M.next_selected()
+	find_selected(false)
 end
 
 function M.edit_symlink()
