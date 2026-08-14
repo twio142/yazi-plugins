@@ -5,6 +5,25 @@ local M = {}
 local BOLD = "\x1b[1;36m"
 local OFF = "\x1b[0m"
 
+--- `toggle_all` takes `File`s, not URLs, and selects the whole folder when
+--- given none. Returns the paths that resolved.
+local toggle = function(paths, state)
+	local files, ok = {}, {}
+	for _, path in ipairs(paths) do
+		local file = fs.file(Url(path))
+		if file then
+			table.insert(files, file)
+			table.insert(ok, path)
+		end
+	end
+	if #files == 0 then
+		return ok
+	end
+	files.state = state
+	ya.emit("toggle_all", files)
+	return ok
+end
+
 M.zoxide = function(s)
 	local cwd = s.cwd
 	if cwd:match("^sftp://") then
@@ -167,13 +186,12 @@ M.fd = function(s)
 			M.zoxide({ cwd = os.getenv("PWD"), query = s.query })
 			return
 		end
-		for i, file in ipairs(files) do
-			file = tostring(Url(cwd):join(file))
-			ya.emit("toggle", { file, state = "on" })
-			if i == #files then
-				ya.emit("reveal", { file })
-			end
+		local paths = {}
+		for _, file in ipairs(files) do
+			table.insert(paths, tostring(Url(cwd):join(file)))
 		end
+		toggle(paths, "on")
+		ya.emit("reveal", { paths[#paths] })
 	end
 end
 
@@ -213,9 +231,7 @@ M.fd_remote = function(s)
 				table.insert(selected, cwd .. "/" .. line)
 			end
 			if #selected > 1 then
-				for _, path in ipairs(selected) do
-					ya.emit("toggle", { path, state = "on" })
-				end
+				toggle(selected, "on")
 			end
 			ya.emit("reveal", { selected[#selected] })
 		end
@@ -272,13 +288,12 @@ M.grep = function(s)
 			M.zoxide({ cwd = os.getenv("PWD"), query = s.query })
 			return
 		end
-		for i, file in ipairs(files) do
-			file = tostring(Url(cwd):join(file))
-			ya.emit("toggle", { file, state = "on" })
-			if i == #files then
-				ya.emit("reveal", { file })
-			end
+		local paths = {}
+		for _, file in ipairs(files) do
+			table.insert(paths, tostring(Url(cwd):join(file)))
 		end
+		toggle(paths, "on")
+		ya.emit("reveal", { paths[#paths] })
 	end
 end
 
@@ -320,9 +335,9 @@ M.selected = function(s)
 		return
 	end
 	if lines[1] == "deselect" then
-		for i = 2, #lines do
-			ya.emit("toggle", { lines[i], state = "off" })
-			s.map[lines[i]] = false
+		local paths = table.move(lines, 2, #lines, 1, {})
+		for _, path in ipairs(toggle(paths, "off")) do
+			s.map[path] = false
 		end
 		s.selected = {}
 		for path, ok in pairs(s.map) do
