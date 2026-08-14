@@ -231,6 +231,15 @@ function M.save_as(_, quit)
 	M.save(name ~= "" and name or DEFAULT, quit)
 end
 
+function M.setup()
+	local entries = rt.args.entries
+	if not entries[1] or tostring(entries[1]) ~= "-r" then
+		return
+	end
+
+	ya.async(M.restore, entries[2] and tostring(entries[2]) or DEFAULT)
+end
+
 function M.restore(name)
 	name = name or DEFAULT
 	local path, err = path_of(name)
@@ -325,6 +334,7 @@ function M.restore(name)
 end
 
 return {
+	setup = M.setup,
 	entry = function(_, job)
 		local action = M[job.args[1]]
 		if not action then
