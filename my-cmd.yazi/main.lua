@@ -120,8 +120,6 @@ M.on_selection = function(mode)
 		else
 			ya.emit("shell", { "nvim %s", block = true })
 		end
-	elseif mode == "sync" then
-		ya.emit("shell", { "ya pub-to 0 select --list %s" })
 	end
 end
 
@@ -270,13 +268,6 @@ M.smart = function(arg)
 end
 
 return {
-	setup = function()
-		ps.sub_remote("select", function(body)
-			for _, item in ipairs(body) do
-				ya.emit("toggle", { item, state = "on" })
-			end
-		end)
-	end,
 	entry = function(_, job)
 		local args = job.args
 		local func = M[args[1]]
