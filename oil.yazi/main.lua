@@ -1,5 +1,5 @@
 --- @diagnostic disable: undefined-global
---- @since 26.08.11
+--- @since 26.08.15
 _G.ya = _G.ya or {}
 _G.cx = _G.cx or {}
 
@@ -197,6 +197,7 @@ M.shell = function(state)
 		realtime = false,
 		title = title .. ":",
 		pos = { "top-center", w = 50, x = 0, y = 2 },
+		history = "yazi-oil",
 	})
 	if event == 1 then
 		if #state.selected == 0 and state.hovered then
@@ -238,6 +239,7 @@ M.shell_block = function()
 		realtime = false,
 		title = "Shell: 󰞌",
 		pos = { "top-center", w = 50, x = 0, y = 2 },
+		history = "yazi-oil",
 	})
 	if event == 1 then
 		local script = "/tmp/yazi_shell.sh"
@@ -247,7 +249,7 @@ M.shell_block = function()
 		end
 		f:write(value)
 		f:close()
-		ya.emit("shell", { ('YAZI_OIL=1 $SHELL -li %s %%s'):format(script), block = true })
+		ya.emit("shell", { ("YAZI_OIL=1 $SHELL -li %s %%s"):format(script), block = true })
 	end
 end
 
