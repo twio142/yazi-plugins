@@ -267,6 +267,25 @@ M.smart = function(arg)
 	end
 end
 
+M.git = function(arg)
+	if #cx.active.selected == 0 and not cx.active.current.hovered then
+		return
+	end
+	if arg == "add" then
+		ya.emit("shell", { "git add %s", block = true })
+		ui.render()
+		ya.emit("toggle_all", { state = "off" })
+	elseif arg == "unstage" then
+		ya.emit("shell", { "git reset -- %s", block = true })
+		ui.render()
+		ya.emit("toggle_all", { state = "off" })
+	elseif arg == "revert" then
+		ya.emit("shell", { "git checkout HEAD -- %s", block = true })
+		ui.render()
+		ya.emit("toggle_all", { state = "off" })
+	end
+end
+
 return {
 	entry = function(_, job)
 		local args = job.args

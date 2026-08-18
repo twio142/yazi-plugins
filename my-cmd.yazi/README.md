@@ -27,6 +27,10 @@
     - `edit`: open selected files in editor
     - `rename`: rename selected files
     - `exec`: edit a command with selected files and execute.
+- `git`
+    - `add`: git add selected files
+    - `unstage`: git reset selected files
+    - `revert`: revert selected files to last commit
 
 ## Usage
 
