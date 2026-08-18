@@ -41,12 +41,12 @@ local function theme()
 		[CODES.clean] = t.clean or ui.Style(),
 	}, {
 		[CODES.unknown] = t.unknown_sign or "",
-		[CODES.ignored] = t.ignored_sign or " ",
+		[CODES.ignored] = t.ignored_sign or " ",
 		[CODES.untracked] = t.untracked_sign or "? ",
-		[CODES.modified] = t.modified_sign or " ",
-		[CODES.added] = t.added_sign or " ",
-		[CODES.deleted] = t.deleted_sign or " ",
-		[CODES.updated] = t.updated_sign or " ",
+		[CODES.modified] = t.modified_sign or " ",
+		[CODES.added] = t.added_sign or " ",
+		[CODES.deleted] = t.deleted_sign or " ",
+		[CODES.updated] = t.updated_sign or " ",
 		[CODES.clean] = t.clean_sign or "",
 	}
 end
@@ -88,7 +88,7 @@ local function root(cwd)
 		local next = cwd:join(".git")
 		local cha = fs.cha(next)
 		if cha and (cha.is_dir or is_worktree(next)) then
-			return tostring(cwd.path)
+			return tostring(cwd)
 		end
 		cwd = cwd.parent
 	until not cwd
@@ -229,12 +229,12 @@ local function fetch(_, job)
 
 	local paths = {}
 	for _, file in ipairs(job.files) do
-		paths[#paths + 1] = tostring(file.url.path)
+		paths[#paths + 1] = tostring(file.url)
 	end
 
 	-- stylua: ignore
 	local output, err = Command("git")
-		:cwd(tostring(cwd.path))
+		:cwd(tostring(cwd))
 		:arg({ "--no-optional-locks", "-c", "core.quotePath=", "status", "--porcelain", "-unormal", "--no-renames", "--ignored=matching" })
 		:arg(paths)
 		:output()
@@ -273,7 +273,11 @@ end
 local function fetch_compact(self, job)
 	if ya.throttle then
 		fetch(self, job)
-		return require("noop"):fetch(job)
+		return ya.co(function()
+			for _, file in ipairs(job.files) do
+				coroutine.yield(file, { retry = true })
+			end
+		end)
 	else
 		return fetch(self, job)
 	end
