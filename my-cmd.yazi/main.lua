@@ -6,7 +6,7 @@ _G.cx = _G.cx or {}
 
 local M = {}
 
-M.on_selection = function(mode)
+M.on_selection = function(action)
 	local h = cx.active.current.hovered
 	local is_dir = h and h.cha.is_dir
 	local first
@@ -28,57 +28,57 @@ M.on_selection = function(mode)
 	if not first then
 		return
 	end
-	if mode == "copy" or mode == "copy-force" then
+	if action == "copy" or action == "copy-force" then
 		if is_dir then
 			ya.emit("enter", {})
 		end
 		ya.emit("yank", {})
-		ya.emit("paste", { force = mode:match("force") and true or false })
+		ya.emit("paste", { force = action:match("force") and true or false })
 		ya.emit("unyank", {})
 		ya.emit("escape", {})
-	elseif mode == "move" or mode == "move-force" then
+	elseif action == "move" or action == "move-force" then
 		if is_dir then
 			ya.emit("enter", {})
 		end
 		ya.emit("yank", { cut = true })
-		ya.emit("paste", { force = mode:match("force") and true or false })
+		ya.emit("paste", { force = action:match("force") and true or false })
 		ya.emit("unyank", {})
 		ya.emit("escape", {})
-	elseif mode:match("new%-dir") then
+	elseif action:match("new%-dir") then
 		local dir = (is_dir and h.url or h.url.parent):join("Folder with selected items")
 		dir = tostring(dir)
 		local cmd = string.format(
 			[[mkdir -p '%s'; %s %%s '%s'; ya emit reveal '%s'; ya emit unyank; ya emit escape]],
 			dir,
-			mode:match("move") and "mv" or "cp -a",
+			action:match("move") and "mv" or "cp -a",
 			dir,
 			dir
 		)
 		ya.emit("shell", { cmd })
-	elseif mode:match("link") then
+	elseif action:match("link") then
 		if is_dir then
 			ya.emit("enter", {})
 		end
 		ya.emit("yank", {})
-		ya.emit(mode:match("symlink") and "link" or "hardlink", {
-			force = mode:match("force") and true or false,
-			relative = mode:match("relative") and true or false,
+		ya.emit(action:match("symlink") and "link" or "hardlink", {
+			force = action:match("force") and true or false,
+			relative = action:match("relative") and true or false,
 			follow = true,
 		})
-	elseif mode == "delete" then
+	elseif action == "delete" then
 		ya.emit("remove", {})
-	elseif mode == "edit" then
-		if os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
+	elseif action == "edit" then
+		if os.getenv("NVIM") then
 			ya.emit("shell", { "nvr -cc quit %s" })
 		elseif os.getenv("TMUX_POPUP") then
-			ya.emit("shell", { "SESS=$TMUX_ORIG_SESS tmux-edit %s; ya emit quit" })
+			ya.emit("shell", { "tmux-edit %s; ya emit quit" })
 		else
 			ya.emit("open", {})
 		end
-	elseif mode == "rename" then
+	elseif action == "rename" then
 		ya.emit("rename", {})
 		ya.emit("escape", {})
-	elseif mode == "diff" then
+	elseif action == "diff" then
 		local bg = "$(~/.local/bin/background)"
 		local light = rt.term.light()
 		if light ~= nil then
@@ -94,7 +94,7 @@ M.on_selection = function(mode)
 			]=]):format(bg),
 			block = true,
 		})
-	elseif mode == "exec" then
+	elseif action == "exec" then
 		ya.emit("shell", {
 			[=[
 			cache=/tmp/yazi_map_selection;
@@ -112,9 +112,9 @@ M.on_selection = function(mode)
 		]=],
 			block = true,
 		})
-	elseif mode == "enter" then
+	elseif action == "enter" then
 		if os.getenv("TMUX_POPUP") then
-			ya.emit("shell", { "SESS=$TMUX_ORIG_SESS tmux-edit %s; ya emit quit" })
+			ya.emit("shell", { "tmux-edit %s; ya emit quit" })
 		elseif os.getenv("NVIM") then
 			ya.emit("shell", { "nvr -cc quit %n" })
 		else
@@ -123,79 +123,168 @@ M.on_selection = function(mode)
 	end
 end
 
-M.smart = function(arg)
-	if arg == "enter" then
-		local h = cx.active.current.hovered
-		local function is_code(file)
-			local mime = file:mime()
-			return mime and mime:match("^text/") or mime:match("^application/json")
+M.smart = function(action)
+	local h = cx.active.current.hovered
+	local function is_remote(file)
+		return tostring(file):match("^sftp://")
+	end
+	local function is_editable(file)
+		local mime = file:mime()
+		return mime and (mime:match("^text/") or mime:match("^application/json"))
+	end
+	if action == "enter" then
+		-- enter dir or edit file
+		local cmd
+		local block = false
+		if h.cha.is_dir then
+			if is_remote(h) then
+				cmd = string.format(
+					[[ssh %s -t "cd %s && \$SHELL -l"]],
+					h.url.spec.domain,
+					ya.quote(tostring(h.url.path))
+				)
+				if os.getenv("TMUX") then
+					cmd = "tmux-run " .. cmd
+				end
+			else
+				cmd = "cd %h"
+				if os.getenv("TMUX") then
+					cmd = "tmux-run " .. cmd
+				else
+					cmd = cmd .. " && $SHELL -l"
+				end
+			end
+			block = not os.getenv("TMUX")
+		elseif is_editable(h) then
+			if os.getenv("NVIM") then
+				cmd = "nvr -cc quit %h"
+			elseif os.getenv("TMUX") then
+				cmd = "tmux-edit %h"
+			end
 		end
-		if h.cha.is_dir and tostring(h.url):match("^sftp://") then
-			local cmd =
-				string.format("ssh %s -t 'cd %s && $SHELL -l'", h.url.spec.domain, ya.quote(tostring(h.url.path)))
-			ya.emit("shell", { cmd, block = true })
-		elseif os.getenv("NVIM") and not os.getenv("TMUX_POPUP") and not h.cha.is_dir then
-			if is_code(h) then
-				ya.emit("shell", { "nvr -cc quit %h" })
-			else
-				ya.emit("open", { hovered = true })
+		if cmd then
+			if os.getenv("TMUX_POPUP") then
+				cmd = cmd .. "; ya emit quit"
 			end
-		elseif os.getenv("TMUX_POPUP") then
-			local cmd = "SESS=$TMUX_ORIG_SESS tmux-run %s %%h; ya emit quit"
-			if h.cha.is_dir then
-				cmd = cmd:format("cd")
-			elseif is_code(h) then
-				cmd = cmd:format("nvim")
-			else
-				ya.emit("open", { hovered = true })
-				return
-			end
-			ya.emit("shell", { cmd })
-		elseif h.cha.is_dir then
-			ya.emit("shell", { "cd %h; $SHELL -l", block = true })
+			ya.emit("shell", { cmd, block = block })
 		else
 			ya.emit("open", { hovered = true })
 		end
-	elseif arg == "open-neww" then
+	elseif action == "open-neww" then
+		-- enter dir or edit file in new window
 		if not os.getenv("TMUX") then
 			return
 		end
-		local h = cx.active.current.hovered
 		local cmd
-		if h.cha.is_dir and tostring(h.url):match("^sftp://") then
-			cmd = string.format(
-				[[tmux neww -t $TMUX_ORIG_SESS: 'ssh %s -t "cd %s && \$SHELL -l"'; [ -z $TMUX_POPUP ] || ya emit quit]],
-				h.url.spec.domain,
-				ya.quote(tostring(h.url.path))
-			)
-		else
-			cmd = string.format(
-				"NEWW=1 SESS=$TMUX_ORIG_SESS tmux-run %s %%h; [ -z $TMUX_POPUP ] || ya emit quit",
-				h.cha.is_dir and "cd" or "nvim"
-			)
+		if h.cha.is_dir then
+			if is_remote(h) then
+				cmd = string.format(
+					[[NEWW=1 tmux-run ssh %s -t "cd %s && \$SHELL -l"]],
+					h.url.spec.domain,
+					ya.quote(tostring(h.url.path))
+				)
+			else
+				cmd = "NEWW=1 tmux-run cd %h"
+			end
+		elseif is_editable(h) then
+			cmd = "NEWW=1 tmux-edit %h"
 		end
-		ya.emit("shell", { cmd })
-	elseif arg == "cd" then
+		if cmd then
+			if os.getenv("TMUX_POPUP") then
+				cmd = cmd .. "; ya emit quit"
+			end
+			ya.emit("shell", { cmd })
+		end
+	elseif action == "split" then
+		-- enter dir or edit file in horizontal split
+		if not os.getenv("TMUX") then
+			return
+		end
+		local cmd
+		if h.cha.is_dir then
+			if is_remote(h) then
+				cmd = string.format(
+					[[SPLIT=down tmux-run ssh %s -t "cd %s && \$SHELL -l"]],
+					h.url.spec.domain,
+					ya.quote(tostring(h.url.path))
+				)
+			else
+				cmd = "SPLIT=down tmux-run cd %h"
+			end
+		elseif is_editable(h) then
+			if os.getenv("NVIM") then
+				cmd = "nvr -cc quit -cc split %h"
+			else
+				cmd = "SPLIT=down tmux-edit %h"
+			end
+		end
+		if cmd then
+			if os.getenv("TMUX_POPUP") then
+				cmd = cmd .. "; ya emit quit"
+			end
+			ya.emit("shell", { cmd })
+		end
+	elseif action == "vsplit" then
+		-- enter dir or edit file in vertical split
+		if not os.getenv("TMUX") then
+			return
+		end
+		local cmd
+		if h.cha.is_dir then
+			if is_remote(h) then
+				cmd = string.format(
+					[[SPLIT=right tmux-run ssh %s -t "cd %s && \$SHELL -l"]],
+					h.url.spec.domain,
+					ya.quote(tostring(h.url.path))
+				)
+			else
+				cmd = "SPLIT=right tmux-run cd %h"
+			end
+		elseif is_editable(h) then
+			if os.getenv("NVIM") then
+				cmd = "nvr -cc quit -cc vsplit %h"
+			else
+				cmd = "SPLIT=right tmux-edit %h"
+			end
+		end
+		if cmd then
+			if os.getenv("TMUX_POPUP") then
+				cmd = cmd .. "; ya emit quit"
+			end
+			ya.emit("shell", { cmd })
+		end
+	elseif action == "cd" then
+		-- cd to current working directory
 		local cwd = cx.active.current.cwd
-		local is_remote = tostring(cwd):match("^sftp://")
-		if os.getenv("TMUX") then
-			local cmd = is_remote
-					and ("ssh %s -t 'cd %s && $SHELL -l'"):format(cwd.spec.domain, ya.quote(tostring(cwd.path)))
-				or 'cd "$(pwd)"'
-			ya.emit("shell", { "SESS=$TMUX_ORIG_SESS tmux-run " .. cmd .. "; ya emit quit" })
+		local cmd
+		if is_remote(cwd) then
+			cmd = ([[ssh %s -t "cd %s && \$SHELL -l"]]):format(cwd.spec.domain, ya.quote(tostring(cwd.path)))
+			if os.getenv("TMUX") then
+				cmd = "tmux-run " .. cmd
+			end
 		else
-			local cmd = is_remote
-					and ("ssh %s -t 'cd %s && $SHELL -l'"):format(cwd.spec.domain, ya.quote(tostring(cwd.path)))
-				or 'cd "$(pwd)"; $SHELL -l'
-			ya.emit("shell", { cmd, block = true })
+			cmd = 'cd "$(pwd)"'
+			if os.getenv("TMUX") then
+				cmd = "tmux-run " .. cmd
+			else
+				cmd = "$SHELL -l"
+			end
 		end
-	elseif arg == "esc" then
+		if cmd then
+			if os.getenv("TMUX_POPUP") then
+				cmd = cmd .. "; ya emit quit"
+			end
+			ya.emit("shell", { cmd, block = not os.getenv("TMUX") })
+		end
+	elseif action == "esc" then
+		-- unyank if yanked, otherwise escape
 		if #cx.yanked > 0 then
 			ya.emit("unyank", {})
 		else
 			ya.emit("escape", {})
 		end
-	elseif arg == "parent-up" then
+	elseif action == "parent-up" then
+		-- go to parent directory's previous sibling directory
 		local parent = cx.active.parent
 		if not parent then
 			return
@@ -204,7 +293,8 @@ M.smart = function(arg)
 		if target and target.cha.is_dir then
 			ya.emit("cd", { target.url })
 		end
-	elseif arg == "parent-down" then
+	elseif action == "parent-down" then
+		-- go to parent directory's next sibling directory
 		local parent = cx.active.parent
 		if not parent then
 			return
@@ -213,77 +303,39 @@ M.smart = function(arg)
 		if target and target.cha.is_dir then
 			ya.emit("cd", { target.url })
 		end
-	elseif arg == "next-tab" then
+	elseif action == "next-tab" then
+		-- switch to next tab, create new tab if only one tab exists
 		if #cx.tabs == 1 then
-			local h = cx.active.current.hovered
 			ya.emit("tab_create", h and h.cha.is_dir and { h.url } or { current = true })
 		else
 			ya.emit("tab_switch", { 1, relative = true })
 		end
-	elseif arg == "split" then
-		local h = cx.active.current.hovered
-		if h.cha.is_dir and os.getenv("TMUX") then
-			local cmd
-			if tostring(h.url):match("^sftp://") then
-				cmd = string.format(
-					[[tmux splitw -t $TMUX_ORIG_SESS: -v 'ssh %s -t "cd %s && \$SHELL -l"'; [ -z $TMUX_POPUP ] || ya emit quit]],
-					h.url.spec.domain,
-					ya.quote(tostring(h.url.path))
-				)
-			else
-				cmd = "tmux splitw -t $TMUX_ORIG_SESS: -v -c %h; [ -z $TMUX_POPUP ] || ya emit quit"
-			end
-			ya.emit("shell", { cmd })
-		elseif os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
-			ya.emit("shell", { "nvr -cc quit -cc split %h" })
-		elseif os.getenv("TMUX") then
-			ya.emit("shell", { 'tmux splitw -t $TMUX_ORIG_SESS: -v "nvim %h"; [ -z $TMUX_POPUP ] || ya emit quit' })
-		end
-	elseif arg == "vsplit" then
-		local h = cx.active.current.hovered
-		if h.cha.is_dir and os.getenv("TMUX") then
-			local cmd
-			if tostring(h.url):match("^sftp://") then
-				cmd = string.format(
-					[[tmux splitw -t $TMUX_ORIG_SESS: -h 'ssh %s -t "cd %s && \$SHELL -l"'; [ -z $TMUX_POPUP ] || ya emit quit]],
-					h.url.spec.domain,
-					ya.quote(tostring(h.url.path))
-				)
-			else
-				cmd = "tmux splitw -t $TMUX_ORIG_SESS: -h -c %h; [ -z $TMUX_POPUP ] || ya emit quit"
-			end
-			ya.emit("shell", { cmd })
-		elseif os.getenv("NVIM") and not os.getenv("TMUX_POPUP") then
-			ya.emit("shell", { "nvr -cc quit -cc vsplit %h" })
-		elseif os.getenv("TMUX") then
-			ya.emit("shell", { 'tmux splitw -t $TMUX_ORIG_SESS: -h "nvim %h"; [ -z $TMUX_POPUP ] || ya emit quit' })
-		end
-	elseif arg == "copy-path" then
+	elseif action == "copy-path" then
+		-- copy path of hovered file
 		local path = tostring(cx.active.current.hovered.url.path)
 		os.execute("printf " .. ya.quote(path) .. " | " .. (os.getenv("TMUX") and "tmux loadb -" or "pbcopy"))
-	elseif arg == "copy-cwd" then
+	elseif action == "copy-cwd" then
+		-- copy path of current working directory
 		local path = tostring(cx.active.current.cwd.path)
 		os.execute("printf " .. ya.quote(path) .. " | " .. (os.getenv("TMUX") and "tmux loadb -" or "pbcopy"))
 	end
 end
 
-M.git = function(arg)
+M.git = function(action)
 	if #cx.active.selected == 0 and not cx.active.current.hovered then
 		return
 	end
-	if arg == "add" then
-		ya.emit("shell", { "git add %s", block = true })
-		ui.render()
-		ya.emit("toggle_all", { state = "off" })
-	elseif arg == "unstage" then
-		ya.emit("shell", { "git reset -- %s", block = true })
-		ui.render()
-		ya.emit("toggle_all", { state = "off" })
-	elseif arg == "revert" then
-		ya.emit("shell", { "git checkout HEAD -- %s", block = true })
-		ui.render()
-		ya.emit("toggle_all", { state = "off" })
+	local map = {
+		add = "git add %s",
+		unstage = "git reset -- %s",
+		revert = "git checkout HEAD -- %s",
+	}
+	if not map[action] then
+		return
 	end
+	ya.emit("shell", { map[action], block = true })
+	ui.render()
+	ya.emit("toggle_all", { state = "off" })
 end
 
 return {
