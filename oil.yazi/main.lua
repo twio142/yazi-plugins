@@ -216,7 +216,6 @@ M.shell = function(state)
 				:arg({ "-lic", value, state.hovered })
 				:arg(state.selected)
 				:cwd(cwd)
-				:env("YAZI_OIL", "1")
 		end
 		child:stdout(Command.PIPED):stderr(Command.PIPED)
 		local output = child:output()
@@ -249,7 +248,7 @@ M.shell_block = function()
 		end
 		f:write(value)
 		f:close()
-		ya.emit("shell", { ("YAZI_OIL=1 $SHELL -li %s %%s"):format(script), block = true })
+		ya.emit("shell", { ("$SHELL -li %s %%s"):format(script), block = true })
 	end
 end
 
