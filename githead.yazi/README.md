@@ -33,47 +33,52 @@ require("githead"):setup()
 
 Read more about indicators [here](https://github.com/romkatv/powerlevel10k?tab=readme-ov-file#what-do-different-symbols-in-git-status-mean).
 
-Optionally, configure header:
+Optionally, toggle the individual segments:
 
 ```lua
 require("githead"):setup({
   show_branch = true,
-  branch_prefix = "on",
-  branch_color = "blue",
-  branch_symbol = "",
-  branch_borders = "()",
-
-  commit_color = "bright magenta",
-  commit_symbol = "@",
-
   show_behind_ahead = true,
-  behind_color = "bright magenta",
-  behind_symbol = "⇣",
-  ahead_color = "bright magenta",
-  ahead_symbol = "⇡",
-
   show_stashes = true,
-  stashes_color = "bright magenta",
-  stashes_symbol = "$",
-
   show_state = true,
   show_state_prefix = true,
-  state_color = "red",
-  state_symbol = "~",
-
   show_staged = true,
-  staged_color = "bright yellow",
-  staged_symbol = "+",
-
   show_unstaged = true,
-  unstaged_color = "bright yellow",
-  unstaged_symbol = "!",
-
   show_untracked = true,
-  untracked_color = "blue",
-  untracked_symbol = "?",
 })
 ```
+
+## Theme
+
+The colors and symbols live in your `~/.config/yazi/theme.toml`, under a `[githead]` section:
+
+```toml
+[githead]
+branch           = { fg = "blue" }
+branch_prefix    = "on"
+branch_symbol    = ""
+branch_borders   = "()"
+commit           = { fg = "lightmagenta" }
+commit_symbol    = "@"
+behind           = { fg = "lightmagenta" }
+behind_symbol    = "⇣"
+ahead            = { fg = "lightmagenta" }
+ahead_symbol     = "⇡"
+stashes          = { fg = "lightmagenta" }
+stashes_symbol   = "$"
+state            = { fg = "red" }
+state_symbol     = "~"
+staged           = { fg = "lightyellow" }
+staged_symbol    = "+"
+unstaged         = { fg = "lightyellow" }
+unstaged_symbol  = "!"
+untracked        = { fg = "lightblue" }
+untracked_symbol = "?"
+```
+
+Those are the defaults. The color keys take any [Style](https://yazi-rs.github.io/docs/configuration/theme#style)
+table, so `bold`, `italic` and the rest work too, and both colors and symbols are re-read whenever the theme
+changes.
 
 ## Features
 

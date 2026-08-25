@@ -7,47 +7,54 @@ local save = ya.sync(function(this, cwd, output)
 	end
 end)
 
+local function theme()
+	local t = th.githead or {}
+	return {
+		branch = t.branch or ui.Style():fg("blue"),
+		commit = t.commit or ui.Style():fg("bright magenta"),
+		behind = t.behind or ui.Style():fg("bright magenta"),
+		ahead = t.ahead or ui.Style():fg("bright magenta"),
+		stashes = t.stashes or ui.Style():fg("bright magenta"),
+		state = t.state or ui.Style():fg("red"),
+		staged = t.staged or ui.Style():fg("bright yellow"),
+		unstaged = t.unstaged or ui.Style():fg("bright yellow"),
+		untracked = t.untracked or ui.Style():fg("bright blue"),
+	}, {
+		branch_prefix = t.branch_prefix or "on",
+		branch_symbol = t.branch_symbol or "",
+		branch_borders = t.branch_borders or "()",
+		commit_symbol = t.commit_symbol or "@",
+		behind_symbol = t.behind_symbol or "⇣",
+		ahead_symbol = t.ahead_symbol or "⇡",
+		stashes_symbol = t.stashes_symbol or "$",
+		state_symbol = t.state_symbol or "~",
+		staged_symbol = t.staged_symbol or "+",
+		unstaged_symbol = t.unstaged_symbol or "!",
+		untracked_symbol = t.untracked_symbol or "?",
+	}
+end
+
 return {
 	setup = function(this, options)
 		options = options or {}
 
 		local config = {
-			show_branch = options.show_branch == nil and true or options.show_branch,
-			branch_prefix = options.branch_prefix or "on",
-			branch_color = options.branch_color or "blue",
-			branch_symbol = options.branch_symbol or "",
-			branch_borders = options.branch_borders or "()",
-
-			commit_color = options.commit_color or "bright magenta",
-			commit_symbol = options.commit_symbol or "@",
-
-			show_behind_ahead = options.behind_ahead == nil and true or options.behind_ahead,
-			behind_color = options.behind_color or "bright magenta",
-			behind_symbol = options.behind_symbol or "⇣",
-			ahead_color = options.ahead_color or "bright magenta",
-			ahead_symbol = options.ahead_symbol or "⇡",
-
-			show_stashes = options.show_stashes == nil and true or options.show_stashes,
-			stashes_color = options.stashes_color or "bright magenta",
-			stashes_symbol = options.stashes_symbol or "$",
-
-			show_state = options.show_state == nil and true or options.show_state,
-			show_state_prefix = options.show_state_prefix == nil and true or options.show_state_prefix,
-			state_color = options.state_color or "red",
-			state_symbol = options.state_symbol or "~",
-
-			show_staged = options.show_staged == nil and true or options.show_staged,
-			staged_color = options.staged_color or "bright yellow",
-			staged_symbol = options.staged_symbol or "+",
-
-			show_unstaged = options.show_unstaged == nil and true or options.show_unstaged,
-			unstaged_color = options.unstaged_color or "bright yellow",
-			unstaged_symbol = options.unstaged_symbol or "!",
-
-			show_untracked = options.show_untracked == nil and true or options.show_untracked,
-			untracked_color = options.untracked_color or "bright blue",
-			untracked_symbol = options.untracked_symbol or "?",
+			show_branch = options.show_branch ~= false,
+			-- `behind_ahead` is the legacy name of this option
+			show_behind_ahead = options.show_behind_ahead ~= false and options.behind_ahead ~= false,
+			show_stashes = options.show_stashes ~= false,
+			show_state = options.show_state ~= false,
+			show_state_prefix = options.show_state_prefix ~= false,
+			show_staged = options.show_staged ~= false,
+			show_unstaged = options.show_unstaged ~= false,
+			show_untracked = options.show_untracked ~= false,
 		}
+
+		local styles, signs = theme()
+		ps.sub("theme", function()
+			styles, signs = theme()
+			ui.render()
+		end)
 
 		function Header:get_branch(status)
 			local branch = status:match("On branch (%S+)")
@@ -58,31 +65,31 @@ return {
 				if commit == nil then
 					return ""
 				else
-					local branch_prefix = config.branch_prefix == "" and " " or " " .. config.branch_prefix .. " "
-					local commit_prefix = config.commit_symbol == "" and "" or config.commit_symbol
+					local branch_prefix = signs.branch_prefix == "" and " " or " " .. signs.branch_prefix .. " "
+					local commit_prefix = signs.commit_symbol == "" and "" or signs.commit_symbol
 
 					return ui.Line({
 						ui.Span(branch_prefix .. commit_prefix),
-						ui.Span(commit):fg(config.commit_color),
+						ui.Span(commit):style(styles.commit),
 					})
 				end
 			else
-				local left_border = config.branch_borders:sub(1, 1)
-				local right_border = config.branch_borders:sub(2, 2)
+				local left_border = signs.branch_borders:sub(1, 1)
+				local right_border = signs.branch_borders:sub(2, 2)
 
 				local branch_string = ""
 
-				if config.branch_symbol == "" then
+				if signs.branch_symbol == "" then
 					branch_string = left_border .. branch .. right_border
 				else
-					branch_string = left_border .. config.branch_symbol .. " " .. branch .. right_border
+					branch_string = left_border .. signs.branch_symbol .. " " .. branch .. right_border
 				end
 
-				local branch_prefix = config.branch_prefix == "" and " " or " " .. config.branch_prefix .. " "
+				local branch_prefix = signs.branch_prefix == "" and " " or " " .. signs.branch_prefix .. " "
 
 				return ui.Line({
 					ui.Span(branch_prefix),
-					ui.Span(branch_string):fg(config.branch_color),
+					ui.Span(branch_string):style(styles.branch),
 				})
 			end
 		end
@@ -92,17 +99,17 @@ return {
 
 			if diverged_ahead and diverged_behind then
 				return ui.Line({
-					ui.Span(" " .. config.behind_symbol .. diverged_behind):fg(config.behind_color),
-					ui.Span(config.ahead_symbol .. diverged_ahead):fg(config.ahead_color),
+					ui.Span(" " .. signs.behind_symbol .. diverged_behind):style(styles.behind),
+					ui.Span(signs.ahead_symbol .. diverged_ahead):style(styles.ahead),
 				})
 			else
 				local behind = status:match("behind %S+ by (%d+) commit")
 				local ahead = status:match("ahead of %S+ by (%d+) commit")
 
 				if ahead then
-					return ui.Span(" " .. config.ahead_symbol .. ahead):fg(config.ahead_color)
+					return ui.Span(" " .. signs.ahead_symbol .. ahead):style(styles.ahead)
 				elseif behind then
-					return ui.Span(" " .. config.behind_symbol .. behind):fg(config.behind_color)
+					return ui.Span(" " .. signs.behind_symbol .. behind):style(styles.behind)
 				else
 					return ""
 				end
@@ -112,7 +119,7 @@ return {
 		function Header:get_stashes(status)
 			local stashes = tonumber(status:match("Your stash currently has (%S+)"))
 
-			return stashes ~= nil and ui.Span(" " .. config.stashes_symbol .. stashes):fg(config.stashes_color) or ""
+			return stashes ~= nil and ui.Span(" " .. signs.stashes_symbol .. stashes):style(styles.stashes) or ""
 		end
 
 		function Header:get_state(status)
@@ -146,7 +153,7 @@ return {
 					end
 				end
 
-				return ui.Span(" " .. state_name .. config.state_symbol .. unmerged):fg(config.state_color)
+				return ui.Span(" " .. state_name .. signs.state_symbol .. unmerged):style(styles.state)
 			else
 				return ""
 			end
@@ -164,7 +171,7 @@ return {
 					end
 				end
 
-				return ui.Span(" " .. config.staged_symbol .. staged):fg(config.staged_color)
+				return ui.Span(" " .. signs.staged_symbol .. staged):style(styles.staged)
 			else
 				return ""
 			end
@@ -182,7 +189,7 @@ return {
 					end
 				end
 
-				return ui.Span(" " .. config.unstaged_symbol .. unstaged):fg(config.unstaged_color)
+				return ui.Span(" " .. signs.unstaged_symbol .. unstaged):style(styles.unstaged)
 			else
 				return ""
 			end
@@ -200,7 +207,7 @@ return {
 					end
 				end
 
-				return ui.Span(" " .. config.untracked_symbol .. untracked):fg(config.untracked_color)
+				return ui.Span(" " .. signs.untracked_symbol .. untracked):style(styles.untracked)
 			else
 				return ""
 			end
