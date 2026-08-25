@@ -51,22 +51,34 @@ desc = "searchjump mode"
 ```
 
 ## opts setting (~/.config/yazi/init.lua)
+
 ```lua
 require("searchjump"):setup({
-	unmatch_fg = "#b2a496",
-    match_str_fg = "#000000",
-    match_str_bg = "#73AC3A",
-    first_match_str_fg = "#000000",
-    first_match_str_bg = "#73AC3A",
-    lable_fg = "#EADFC8",
-    lable_bg = "#BA603D",
-    only_current = false,
-    show_search_in_statusbar = false,
-    auto_exit_when_unmatch = false,
-    enable_capital_lable = true,
-	search_patterns = ({"hell[dk]d","%d+.1080p","第%d+集","第%d+话","%.E%d+","S%d+E%d+",})
+	only_current = false, -- only search the current window
+	show_search_in_statusbar = false,
+	auto_exit_when_unmatch = true,
+	enable_capital_label = false,
+	search_patterns = {}, -- demo: { "%.e%d+", "s%d+e%d+" }
 })
 ```
+
+## Theme
+
+The colors live in your `~/.config/yazi/theme.toml`, under a `[searchjump]` section:
+
+```toml
+[searchjump]
+unmatch = { fg = "#b2a496" }
+match   = { fg = "#000000", bg = "#73AC3A" }
+label   = { fg = "#EADFC8", bg = "#BA603D" }
+```
+
+- `unmatch` - the part of a filename that doesn't match
+- `match` - the matched part of a filename
+- `label` - the jump label appended to a match
+
+Each takes any [Style](https://yazi-rs.github.io/docs/configuration/theme#style) table, so `bold`, `italic`
+and the rest work too. Those values are the defaults, and they're re-read whenever the theme changes.
 
 When you see some character singal label in right of the entry.
 Press the key of the character will jump to the corresponding entry

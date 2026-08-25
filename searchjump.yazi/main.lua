@@ -10195,6 +10195,17 @@ local function normalize_char(c)
 	return NORMALIZE_TABLE[c] or string.lower(c)
 end
 
+local function theme()
+	local t = th.searchjump or {}
+	return {
+		unmatch = t.unmatch or ui.Style():fg("#b2a496"),
+		match = t.match or ui.Style():fg("#000000"):bg("#73AC3A"),
+		label = t.label or ui.Style():fg("#EADFC8"):bg("#BA603D"),
+	}
+end
+
+local styles = theme()
+
 local set_re_match = ya.sync(function(state, re_match)
 	state.re_match = re_match
 end)
@@ -10352,22 +10363,19 @@ local set_match_label = ya.sync(function(state, url, name, file)
 	if file.is_hovered then
 		table.insert(span, ui.Span(name:sub(1, startPos[1] - 1)))
 	else
-		table.insert(span, ui.Span(name:sub(1, startPos[1] - 1)):fg(state.opt_unmatch_fg))
+		table.insert(span, ui.Span(name:sub(1, startPos[1] - 1)):style(styles.unmatch))
 	end
 
 	while i <= #startPos do
-		table.insert(
-			span,
-			ui.Span(name:sub(startPos[i], endPos[i])):fg(state.opt_match_str_fg):bg(state.opt_match_str_bg)
-		)
+		table.insert(span, ui.Span(name:sub(startPos[i], endPos[i])):style(styles.match))
 		if i <= #key then
-			table.insert(span, ui.Span(key[i]):fg(state.opt_label_fg):bg(state.opt_label_bg))
+			table.insert(span, ui.Span(key[i]):style(styles.label))
 		end
 		if i + 1 <= #startPos then
 			if file.is_hovered then
 				table.insert(span, ui.Span(name:sub(endPos[i] + 1, startPos[i + 1] - 1)))
 			else
-				table.insert(span, ui.Span(name:sub(endPos[i] + 1, startPos[i + 1] - 1)):fg(state.opt_unmatch_fg))
+				table.insert(span, ui.Span(name:sub(endPos[i] + 1, startPos[i + 1] - 1)):style(styles.unmatch))
 			end
 		end
 		i = i + 1
@@ -10376,7 +10384,7 @@ local set_match_label = ya.sync(function(state, url, name, file)
 	if file.is_hovered then
 		table.insert(span, ui.Span(name:sub(endPos[i - 1] + 1, #name)))
 	else
-		table.insert(span, ui.Span(name:sub(endPos[i - 1] + 1, #name)):fg(state.opt_unmatch_fg))
+		table.insert(span, ui.Span(name:sub(endPos[i - 1] + 1, #name)):style(styles.unmatch))
 	end
 	return span
 end)
@@ -10492,7 +10500,7 @@ local toggle_ui = ya.sync(function(st)
 		elseif file.is_hovered then
 			spans = { ui.Span(name) }
 		else
-			spans = { ui.Span(name):fg(st.opt_unmatch_fg) }
+			spans = { ui.Span(name):style(styles.unmatch) }
 		end
 
 		return ui.Line(spans)
@@ -10573,27 +10581,6 @@ local clear_state_str = ya.sync(function(state)
 end)
 
 local set_opts_default = ya.sync(function(state)
-	if state.opt_unmatch_fg == nil then
-		state.opt_unmatch_fg = "#b2a496"
-	end
-	if state.opt_match_str_fg == nil then
-		state.opt_match_str_fg = "#000000"
-	end
-	if state.opt_match_str_bg == nil then
-		state.opt_match_str_bg = "#73AC3A"
-	end
-	if state.opt_first_match_str_fg == nil then
-		state.opt_first_match_str_fg = "#000000"
-	end
-	if state.opt_first_match_str_bg == nil then
-		state.opt_first_match_str_bg = "#73AC3A"
-	end
-	if state.opt_label_fg == nil then
-		state.opt_label_fg = "#EADFC8"
-	end
-	if state.opt_label_bg == nil then
-		state.opt_label_bg = "#BA603D"
-	end
 	if state.opt_only_current == nil then
 		state.opt_only_current = false
 	end
@@ -10641,29 +10628,13 @@ end)
 
 return {
 	setup = function(state, opts)
-		-- Save the user configuration to the plugin's state
-		if opts ~= nil and opts.unmatch_fg ~= nil then
-			state.opt_unmatch_fg = opts.unmatch_fg
-		end
-		if opts ~= nil and opts.match_str_fg ~= nil then
-			state.opt_match_str_fg = opts.match_str_fg
-		end
-		if opts ~= nil and opts.match_str_bg ~= nil then
-			state.opt_match_str_bg = opts.match_str_bg
-		end
-		if opts ~= nil and opts.first_match_str_fg ~= nil then
-			state.opt_first_match_str_fg = opts.first_match_str_fg
-		end
-		if opts ~= nil and opts.first_match_str_bg ~= nil then
-			state.opt_first_match_str_bg = opts.first_match_str_bg
-		end
-		if opts ~= nil and opts.label_fg ~= nil then
-			state.opt_label_fg = opts.label_fg
-		end
-		if opts ~= nil and opts.label_bg ~= nil then
-			state.opt_label_bg = opts.label_bg
-		end
+		styles = theme()
+		ps.sub("theme", function()
+			styles = theme()
+			ui.render()
+		end)
 
+		-- Save the user configuration to the plugin's state
 		if opts ~= nil and opts.only_current ~= nil then
 			state.opt_only_current = opts.only_current
 		end
