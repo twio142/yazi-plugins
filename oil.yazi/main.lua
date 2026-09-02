@@ -152,6 +152,141 @@ M.yank = function()
 	ya.emit("yank", {})
 end
 
+local function notify(content, level)
+	ya.notify({ title = "Create", content = content, level = level or "error", timeout = 5 })
+end
+
+-- Bash-style brace expansion: `{a,b}` lists, `{1..9}` / `{a..e}` / `{0..20..5}`
+-- sequences, nesting, and `\{` escapes. Purely textual -- nothing here touches
+-- the filesystem, so the generated names need not exist yet.
+local BRACE_LIMIT = 512
+
+local function brace_open(s, from)
+	local i = from
+	while i <= #s do
+		local c = s:sub(i, i)
+		if c == "\\" then
+			i = i + 1
+		elseif c == "{" then
+			return i
+		end
+		i = i + 1
+	end
+end
+
+local function brace_close(s, open)
+	local depth, i = 0, open
+	while i <= #s do
+		local c = s:sub(i, i)
+		if c == "\\" then
+			i = i + 1
+		elseif c == "{" then
+			depth = depth + 1
+		elseif c == "}" then
+			depth = depth - 1
+			if depth == 0 then
+				return i
+			end
+		end
+		i = i + 1
+	end
+end
+
+-- Splits on top-level commas only, so `{a,{b,c}}` keeps the inner list intact.
+local function brace_list(body)
+	local parts, depth, start, i = {}, 0, 1, 1
+	while i <= #body do
+		local c = body:sub(i, i)
+		if c == "\\" then
+			i = i + 1
+		elseif c == "{" then
+			depth = depth + 1
+		elseif c == "}" then
+			depth = depth - 1
+		elseif c == "," and depth == 0 then
+			parts[#parts + 1] = body:sub(start, i - 1)
+			start = i + 1
+		end
+		i = i + 1
+	end
+	if #parts == 0 then
+		return nil
+	end
+	parts[#parts + 1] = body:sub(start)
+	return parts
+end
+
+local function brace_range(from, to, step, fmt)
+	local items = {}
+	step = math.abs(step)
+	if step == 0 then
+		step = 1
+	end
+	if from > to then
+		step = -step
+	end
+	for n = from, to, step do
+		if #items > BRACE_LIMIT then
+			break
+		end
+		items[#items + 1] = fmt(n)
+	end
+	return items
+end
+
+local function brace_seq(body)
+	local a, b, step = body:match("^(%-?%d+)%.%.(%-?%d+)%.%.(%-?%d+)$")
+	if not a then
+		a, b = body:match("^(%-?%d+)%.%.(%-?%d+)$")
+	end
+	if a then
+		-- bash pads the whole range when either endpoint carries a leading zero
+		local width = 0
+		if a:match("^%-?0%d") or b:match("^%-?0%d") then
+			width = math.max(#a, #b)
+		end
+		return brace_range(tonumber(a), tonumber(b), tonumber(step) or 1, function(n)
+			return width > 0 and ("%0" .. width .. "d"):format(n) or tostring(n)
+		end)
+	end
+
+	local ca, cb
+	ca, cb, step = body:match("^(%a)%.%.(%a)%.%.(%-?%d+)$")
+	if not ca then
+		ca, cb = body:match("^(%a)%.%.(%a)$")
+	end
+	if ca then
+		return brace_range(ca:byte(), cb:byte(), tonumber(step) or 1, string.char)
+	end
+end
+
+local function brace_expand(s, out)
+	out = out or {}
+	local from = 1
+	while true do
+		if #out > BRACE_LIMIT then
+			return out
+		end
+		local open = brace_open(s, from)
+		if not open then
+			out[#out + 1] = s
+			return out
+		end
+		local close = brace_close(s, open)
+		local body = close and s:sub(open + 1, close - 1)
+		local items = body and (brace_list(body) or brace_seq(body))
+		if items then
+			local pre, post = s:sub(1, open - 1), s:sub(close + 1)
+			for _, item in ipairs(items) do
+				brace_expand(pre .. item .. post, out)
+			end
+			return out
+		end
+		-- `{}`, `{a}` or an unbalanced brace: literal, keep looking after it
+		from = open + 1
+	end
+end
+
 M.add = function(state)
 	if state.cwd:match("^sftp://") then
 		ya.emit("create", {})
@@ -161,26 +296,66 @@ M.add = function(state)
 		title = "Create:",
 		pos = { "hovered", w = 50, x = 13, y = 1 },
 	})
-	local cwd = state.cwd
-	if event == 1 and value ~= "" then
-		-- if value contains a `/`, create parent directories as needed
-		-- if value ends with a `/`, create a directory
-		local dir = value:match("(.+/)")
-		local last_part = value:match("([^/]+)$")
+	if event ~= 1 or value == "" then
+		return
+	end
+
+	local expanded = brace_expand(value)
+	if #expanded > BRACE_LIMIT then
+		notify(("Brace expansion yields more than %d items"):format(BRACE_LIMIT), "warn")
+		return
+	end
+
+	local items = {}
+	for _, item in ipairs(expanded) do
+		item = item:gsub("\\([{},\\])", "%1")
+		if item ~= "" and item ~= "/" then
+			items[#items + 1] = item
+		end
+	end
+	if #items == 0 then
+		return
+	end
+
+	-- The braces produced several names: show the whole list before creating anything.
+	if #items > 1 then
+		local confirmed = ya.confirm({
+			pos = { "center", w = 60, h = math.min(#items + 4, 20) },
+			title = ("Create %d items?"):format(#items),
+			body = ui.Text(items):align(ui.Align.LEFT),
+		})
+		if not confirmed then
+			return
+		end
+	end
+
+	local cwd, first, failed = state.cwd, nil, {}
+	for _, item in ipairs(items) do
+		-- a `/` in the name creates parent directories as needed
+		-- a `/` at the end makes the item itself a directory
+		local dir = item:match("(.+/)")
+		local last_part = item:match("([^/]+)$")
+		local ok = true
 		if dir then
-			local status, err = Command("mkdir"):arg({ "-p", dir }):cwd(cwd):spawn():wait()
-			if status.code ~= 0 then
-				M.notify(_, tostring(err))
-				return
-			end
+			local status = Command("mkdir"):arg({ "-p", dir }):cwd(cwd):spawn():wait()
+			ok = status and status.code == 0
 		end
-		if last_part then
-			local status, err = Command("touch"):arg(value):cwd(cwd):spawn():wait()
-			if status.code ~= 0 then
-				M.notify(_, tostring(err))
-			end
-			return ya.emit("reveal", { cwd .. "/" .. value })
+		if ok and last_part then
+			local status = Command("touch"):arg(item):cwd(cwd):spawn():wait()
+			ok = status and status.code == 0
 		end
+		if ok then
+			first = first or item
+		else
+			failed[#failed + 1] = item
+		end
+	end
+
+	if #failed > 0 then
+		notify("Could not create:\n" .. table.concat(failed, "\n"))
+	end
+	if first then
+		ya.emit("reveal", { cwd .. "/" .. first })
 	end
 end
 
