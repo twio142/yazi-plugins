@@ -39,6 +39,21 @@ yazi -- -r work    # restores `work`
 
 The `--` is required, since Yazi's CLI rejects unknown flags, and `-r` only counts as the first argument after it.
 
+## Options
+
+`setup` takes a table of options:
+
+```lua
+-- init.lua
+require("sessions"):setup({
+  -- Delete the `default` session once it has been restored, so a stale one
+  -- is never restored twice. Default: `true`.
+  delete_default_after_restore = true,
+})
+```
+
+Only `default` is deleted, whether it was restored on startup or by hand. Named sessions are always kept.
+
 ## Storage
 
 `sessions/<name>` inside the plugin's directory, e.g. `~/.config/yazi/plugins/sessions.yazi/sessions/default`. One tab-separated record per line:

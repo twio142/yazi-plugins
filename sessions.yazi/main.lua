@@ -8,6 +8,14 @@ local SEP = WINDOWS and "\\" or "/"
 local MAX_TABS = 9
 local DEFAULT = "default"
 
+local OPTS = {
+	delete_default_after_restore = true,
+}
+
+local opts = ya.sync(function(state)
+	return state.opts or OPTS
+end)
+
 --- Mirrors Yazi's own config directory resolution.
 local function config_dir()
 	local dir = os.getenv("YAZI_CONFIG_HOME")
@@ -231,7 +239,13 @@ function M.save_as(_, quit)
 	M.save(name ~= "" and name or DEFAULT, quit)
 end
 
-function M.setup()
+function M.setup(self, o)
+	self.opts = {}
+	for k, v in pairs(OPTS) do
+		local given = o and o[k]
+		self.opts[k] = given == nil and v or given
+	end
+
 	local entries = rt.args.entries
 	if not entries[1] or tostring(entries[1]) ~= "-r" then
 		return
@@ -249,7 +263,10 @@ function M.restore(name)
 
 	local file = io.open(path, "r")
 	if not file then
-		return notify(("No session named `%s`"):format(name), "error")
+		if name ~= DEFAULT then
+			notify(("No session named `%s`"):format(name), "error")
+		end
+		return
 	end
 	local s = deserialize(file)
 	file:close()
@@ -330,6 +347,11 @@ function M.restore(name)
 	end
 
 	ya.emit("tab_switch", { math.max(math.min(s.idx, #s.tabs), 1) - 1 })
+
+	if name == DEFAULT and opts().delete_default_after_restore then
+		fs.remove("file", Url(path))
+	end
+
 	notify(("Restored %d tab(s) from `%s`"):format(#s.tabs, name))
 end
 
