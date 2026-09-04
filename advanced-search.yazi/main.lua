@@ -233,59 +233,52 @@ end
 local function find_selected(prev)
 	local ctx = get_ctx()
 	local selected = ctx.selected
+	if #selected == 0 then
+		return
+	end
+
 	local map = {}
 	for _, url in ipairs(selected) do
 		map[tostring(url)] = true
 	end
-	if #selected == 0 then
-		return
-	end
-	local files = ctx.files
-	local cursor = ctx.cursor
-	local h = hovered()
+
+	-- Prefer the nearest selected file in the current directory.
+	local files, cursor = ctx.files, ctx.cursor
+	local from, to, step = cursor + 2, #files, 1
 	if prev then
-		for i = cursor, 1, -1 do
-			local f = files[i]
-			if map[tostring(f)] then
-				ya.emit("reveal", { f })
-				return
-			end
-		end
-		if h.selected then
-			for i = #selected, 1, -1 do
-				if selected[i] == h.url then
-					if i > 1 then
-						ya.emit("reveal", { selected[i - 1] })
-					else
-						ya.emit("reveal", { selected[#selected] })
-					end
-				end
-			end
-		else
-			ya.emit("reveal", { selected[#selected] })
-		end
-	else
-		for i = cursor + 2, #files, 1 do
-			local f = files[i]
-			if map[tostring(f)] then
-				ya.emit("reveal", { f })
-				return
-			end
-		end
-		if h.selected then
-			for i = 1, #selected, 1 do
-				if selected[i] == h.url then
-					if i < #selected then
-						ya.emit("reveal", { selected[i + 1] })
-					else
-						ya.emit("reveal", { selected[1] })
-					end
-				end
-			end
-		else
-			ya.emit("reveal", { selected[1] })
+		from, to, step = cursor, 1, -1
+	end
+	for i = from, to, step do
+		local f = files[i]
+		if map[tostring(f)] then
+			ya.emit("reveal", { f })
+			return
 		end
 	end
+
+	-- Otherwise wrap around to the selection in the other directories. Note that
+	-- `ya.emit()` consumes the `Url`s passed to it, so resolve everything first.
+	local h = files[cursor + 1]
+	h = h and tostring(h)
+	local at
+	if h and map[h] then
+		for i, url in ipairs(selected) do
+			if tostring(url) == h then
+				at = i
+				break
+			end
+		end
+	end
+
+	local target
+	if not at then
+		target = prev and selected[#selected] or selected[1]
+	elseif prev then
+		target = at > 1 and selected[at - 1] or selected[#selected]
+	else
+		target = at < #selected and selected[at + 1] or selected[1]
+	end
+	ya.emit("reveal", { target })
 end
 
 function M.prev_selected()
