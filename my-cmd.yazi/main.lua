@@ -89,7 +89,7 @@ M.on_selection = function(action)
 				set -- %%s;
 				[ "$#" -eq 2 ] || exit 0
 				bg=%s
-				w=$(stty size < /dev/tty | awk '{print $2}')
+				w=$(tput cols)
 				delta --$bg --navigate --tabs=2 -n -s --paging=always -w=$w "$@" | less -R
 			]=]):format(bg),
 			block = true,
