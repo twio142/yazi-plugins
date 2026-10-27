@@ -205,18 +205,18 @@ M.smart = function(action)
 		if h.cha.is_dir then
 			if is_remote(h) then
 				cmd = string.format(
-					[[SPLIT=down tmux-run ssh %s -t "cd %s && \$SHELL -l"]],
+					[[SPLIT=bottom tmux-run ssh %s -t "cd %s && \$SHELL -l"]],
 					h.url.spec.domain,
 					ya.quote(tostring(h.url.path))
 				)
 			else
-				cmd = "SPLIT=down tmux-run cd %h"
+				cmd = "SPLIT=bottom tmux-run cd %h"
 			end
 		elseif is_editable(h) then
 			if os.getenv("NVIM") then
 				cmd = "nvr -cc quit -cc split %h"
 			else
-				cmd = "SPLIT=down tmux-edit %h"
+				cmd = "SPLIT=bottom tmux-edit %h"
 			end
 		end
 		if cmd then
