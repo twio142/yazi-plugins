@@ -6,6 +6,17 @@ _G.cx = _G.cx or {}
 
 local M = {}
 
+-- shell test: is yazi running in a modal tmux pane (one of the tmux float launchers)
+local MODAL = [=[[ -n "$TMUX_PANE" ] && [ "$(tmux display -p -t "$TMUX_PANE" "#{pane_modal_flag}" 2>/dev/null)" = 1 ]]=]
+
+-- quit yazi after `cmd` when in a tmux float; nvr commands already close yazi via `-cc quit`
+local function quit_if_modal(cmd)
+	if cmd:match("^nvr ") then
+		return cmd
+	end
+	return cmd .. "; " .. MODAL .. " && ya emit quit"
+end
+
 M.on_selection = function(action)
 	local h = cx.active.current.hovered
 	local is_dir = h and h.cha.is_dir
@@ -70,10 +81,8 @@ M.on_selection = function(action)
 	elseif action == "edit" then
 		if os.getenv("NVIM") then
 			ya.emit("shell", { "nvr -cc quit %s" })
-		elseif os.getenv("TMUX_POPUP") then
-			ya.emit("shell", { "tmux-edit %s; ya emit quit" })
 		else
-			ya.emit("open", {})
+			ya.emit("shell", { "if " .. MODAL .. "; then tmux-edit %s; ya emit quit; else ya emit open; fi" })
 		end
 	elseif action == "rename" then
 		ya.emit("rename", {})
@@ -113,12 +122,10 @@ M.on_selection = function(action)
 			block = true,
 		})
 	elseif action == "enter" then
-		if os.getenv("TMUX_POPUP") then
-			ya.emit("shell", { "tmux-edit %s; ya emit quit" })
-		elseif os.getenv("NVIM") then
+		if os.getenv("NVIM") then
 			ya.emit("shell", { "nvr -cc quit %n" })
 		else
-			ya.emit("shell", { "nvim %s", block = true })
+			ya.emit("shell", { "if " .. MODAL .. "; then tmux-edit %s; ya emit quit; else nvim %s; fi", block = true })
 		end
 	end
 end
@@ -163,10 +170,7 @@ M.smart = function(action)
 			end
 		end
 		if cmd then
-			if os.getenv("TMUX_POPUP") then
-				cmd = cmd .. "; ya emit quit"
-			end
-			ya.emit("shell", { cmd, block = block })
+			ya.emit("shell", { quit_if_modal(cmd), block = block })
 		else
 			ya.emit("open", { hovered = true })
 		end
@@ -190,10 +194,7 @@ M.smart = function(action)
 			cmd = "NEWW=1 tmux-edit %h"
 		end
 		if cmd then
-			if os.getenv("TMUX_POPUP") then
-				cmd = cmd .. "; ya emit quit"
-			end
-			ya.emit("shell", { cmd })
+			ya.emit("shell", { quit_if_modal(cmd) })
 		end
 	elseif action == "split" then
 		-- enter dir or edit file in horizontal split
@@ -219,10 +220,7 @@ M.smart = function(action)
 			end
 		end
 		if cmd then
-			if os.getenv("TMUX_POPUP") then
-				cmd = cmd .. "; ya emit quit"
-			end
-			ya.emit("shell", { cmd })
+			ya.emit("shell", { quit_if_modal(cmd) })
 		end
 	elseif action == "vsplit" then
 		-- enter dir or edit file in vertical split
@@ -248,10 +246,7 @@ M.smart = function(action)
 			end
 		end
 		if cmd then
-			if os.getenv("TMUX_POPUP") then
-				cmd = cmd .. "; ya emit quit"
-			end
-			ya.emit("shell", { cmd })
+			ya.emit("shell", { quit_if_modal(cmd) })
 		end
 	elseif action == "cd" then
 		-- cd to current working directory
@@ -271,10 +266,7 @@ M.smart = function(action)
 			end
 		end
 		if cmd then
-			if os.getenv("TMUX_POPUP") then
-				cmd = cmd .. "; ya emit quit"
-			end
-			ya.emit("shell", { cmd, block = not os.getenv("TMUX") })
+			ya.emit("shell", { quit_if_modal(cmd), block = not os.getenv("TMUX") })
 		end
 	elseif action == "esc" then
 		-- unyank if yanked, otherwise escape
