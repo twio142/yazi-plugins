@@ -14,7 +14,7 @@ local function quit_if_modal(cmd)
 	if cmd:match("^nvr ") then
 		return cmd
 	end
-	return cmd .. "; " .. MODAL .. " && ya emit quit"
+	return cmd .. "; if " .. MODAL .. "; then ya emit quit; fi"
 end
 
 M.on_selection = function(action)
