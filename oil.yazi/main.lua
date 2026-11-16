@@ -18,31 +18,66 @@ end)
 -- the trash renames colliding names ("a.txt", "a 2.txt"). Diffing the backing
 -- set before/after a removal therefore identifies exactly the batch we just
 -- trashed, even when several items share one original path.
-local function backing_set()
+local function trash_entries()
 	local entries, err = fs.trash.list()
+	if not entries then
+		return nil, err
+	end
+	local list = {}
+	for _, e in ipairs(entries) do
+		list[#list + 1] = { backing = tostring(e.backing), name = tostring(e.name), is_dir = e.cha.is_dir }
+	end
+	if ya.target_os() ~= "macos" then
+		return list
+	end
+	-- iCloud items go to a separate trash that `fs.trash.list` doesn't see.
+	local icloud = fs.read_dir(Url(os.getenv("HOME") .. "/Library/Mobile Documents/.Trash"), {}) or {}
+	for _, f in ipairs(icloud) do
+		list[#list + 1] = { backing = tostring(f.url), name = tostring(f.name), is_dir = f.cha.is_dir }
+	end
+	return list
+end
+
+local function backing_set()
+	local entries, err = trash_entries()
 	if not entries then
 		return nil, err
 	end
 	local set = {}
 	for _, e in ipairs(entries) do
-		set[tostring(e.backing)] = true
+		set[e.backing] = true
 	end
 	return set
 end
 
 local function trashed_since(before)
-	local entries, err = fs.trash.list()
+	local entries, err = trash_entries()
 	if not entries then
 		return nil, err
 	end
 	local added = {}
 	for _, e in ipairs(entries) do
-		local backing = tostring(e.backing)
-		if not before[backing] then
-			added[#added + 1] = { backing = backing, name = tostring(e.name), is_dir = e.cha.is_dir }
+		if not before[e.backing] then
+			added[#added + 1] = e
 		end
 	end
 	return added
+end
+
+-- `trashItemAtURL` refuses some items (e.g. files in iCloud app containers)
+-- with a permission error, so move whatever is left behind into ~/.Trash.
+local function force_trash(paths)
+	local trash = Url(os.getenv("HOME") .. "/.Trash")
+	for _, p in ipairs(paths) do
+		local from = Url(p)
+		local cha = fs.cha(from)
+		if cha then
+			local target = fs.unique(cha.is_dir and "dir" or "file", trash:join(from.name))
+			if not fs.rename(from, target) then
+				Command("mv"):arg({ p, tostring(target) }):spawn():wait()
+			end
+		end
+	end
 end
 
 M.delete = function(state)
@@ -78,6 +113,11 @@ M.delete = function(state)
 		ya.sleep(0.05)
 		added = trashed_since(before) or added
 	until #added >= count or ya.time() > deadline
+
+	if #added < count and ya.target_os() == "macos" then
+		force_trash(#state.selected > 0 and state.selected or { state.hovered })
+		added = trashed_since(before) or added
+	end
 
 	stash(added)
 	if #added < count then
